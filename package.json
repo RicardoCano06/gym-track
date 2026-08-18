@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
     "seed:fetch": "node scripts/fetch-catalog.mjs",
     "seed:db": "node scripts/seed-db.mjs"
   },
@@ -26,6 +27,7 @@
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.0"
+    "vite": "^8.2.0",
+    "wrangler": "^4.124.0"
   }
 }
