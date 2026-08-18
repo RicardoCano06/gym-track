@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import AddExerciseModal from '@/components/AddExerciseModal'
 import SwipeRow from '@/components/SwipeRow'
 import { useConfirm } from '@/lib/use-confirm'
+import { useToast } from '@/lib/toast-context'
 import { WEEKDAYS } from '@/lib/constants'
 import {
   addExerciseToDay,
@@ -21,6 +22,7 @@ import type { Exercise, Routine, RoutineDay, RoutineExercise } from '@/lib/types
 export default function RoutineDetail() {
   const { id } = useParams()
   const { ask, dialog } = useConfirm()
+  const { pushToast } = useToast()
   const [routine, setRoutine] = useState<Routine | null>(null)
   const [days, setDays] = useState<RoutineDay[]>([])
   const [groups, setGroups] = useState<string[]>([])
@@ -94,9 +96,14 @@ export default function RoutineDetail() {
   async function handleAddExercise(exercise: Exercise) {
     if (!modalDay) return
     const position = (modalDay.exercises?.length ?? 0) + 1
-    await addExerciseToDay(modalDay.id, exercise.id, position)
-    setModalDay(null)
-    await refresh()
+    try {
+      await addExerciseToDay(modalDay.id, exercise.id, position)
+      setModalDay(null)
+      await refresh()
+    } catch (err) {
+      console.error(err)
+      pushToast('error', 'No se pudo agregar el ejercicio. Revisá tu conexión e intentá de nuevo.')
+    }
   }
 
   async function handleToggleSuperset(
