@@ -43,7 +43,7 @@ async function seed() {
     rest_seconds: 60,
   })
   if (ierr) throw ierr
-  return { uid, dayId: day.id }
+  return { uid, dayId: day.id, exerciseId }
 }
 
 const typeWeight = (value) =>
@@ -89,6 +89,48 @@ const run = async () => {
   await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
   const { data: row } = await client.from('session_sets').select('id').eq('id', setRowId)
   console.log('SET_NEVER_SYNCED:', setRowId !== undefined && (row ?? []).length === 0)
+
+  // Fase B: par ordenado [upsert, delete] para la misma serie — la forma exacta
+  // que adopta la cola cuando el delete llega con el upsert in-flight. El delete
+  // debe ejecutarse DESPUES del upsert (aunque el upsert cree la fila) y dejar
+  // la base sin rastro: sin "resurreccion".
+  const { data: session, error: serr } = await client
+    .from('sessions')
+    .insert({ user_id: seedData.uid, day_id: seedData.dayId })
+    .select('id')
+    .single()
+  if (serr) throw serr
+  const ghostId = '11111111-1111-4111-8111-111111111111'
+  const inject = `(() => {
+    const now = Date.now()
+    const op = (kind, payload) => ({
+      id: 'op-' + Math.random().toString(36).slice(2),
+      kind,
+      payload,
+      retries: 0,
+      createdAt: new Date(now).toISOString(),
+      availableAt: now - 1000,
+      userId: '${seedData.uid}',
+    })
+    const upsert = op('session_set_upsert', {
+      id: '${ghostId}',
+      session_id: '${session.id}',
+      exercise_id: '${seedData.exerciseId}',
+      set_number: 1,
+      weight_kg: 60,
+      completed: true,
+    })
+    const del = op('session_set_delete', { id: '${ghostId}' })
+    localStorage.setItem('gymtrack-sync-queue-${seedData.uid}', JSON.stringify([upsert, del]))
+    window.dispatchEvent(new Event('online'))
+    return true
+  })()`
+  await page.eval(inject)
+  await sleep(6000)
+  const q3 = await page.eval(readQueue(seedData.uid))
+  console.log('QUEUE_AFTER_ORDERED_PAIR:', JSON.stringify(q3.map((o) => ({ kind: o.kind, id: o.payload?.id }))))
+  const { data: ghost } = await client.from('session_sets').select('id').eq('id', ghostId)
+  console.log('ORDERED_PAIR_NO_RESURRECT:', (ghost ?? []).length === 0)
 
   page.close()
   console.log('AFTER_ALL:', JSON.stringify(await cleanupE2E()))

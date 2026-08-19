@@ -40,15 +40,26 @@ let lockOwner = ''
 let lockHeartbeat: number | null = null
 let paused = loadPaused()
 let currentUserId: string | null = null
+const inFlight = new Set<string>()
 
 const listeners = new Set<() => void>()
 const executors = new Map<string, (op: PendingOp, signal: AbortSignal) => Promise<void>>()
 
-// Consolidacion: cuando se encola un delete sobre una entidad cuyo upsert aun
-// esta pendiente en la cola local, el upsert se cancela y el delete no se
-// encola (la entidad nunca llego a la base de datos). Evita rondas de red
-// innecesarias y la "resurreccion" de filas por fallos intermedios.
-const COALESCE: Record<string, string[]> = {
+type OpKey = (payload: Record<string, unknown>) => string | null
+
+// Coalescing de ediciones: multiples upsert sobre la misma entidad se fusionan,
+// el ultimo estado reemplaza al pendiente (una sola peticion por entidad).
+const UPSERT_MERGE: Record<string, OpKey> = {
+  session_set_upsert: (p) => (typeof p.id === 'string' ? p.id : null),
+  body_metric_upsert: (p) =>
+    typeof p.user_id === 'string' && typeof p.date === 'string'
+      ? `${p.user_id}|${p.date}`
+      : null,
+}
+
+// Coalescing upsert -> delete: si el delete llega con el upsert aun pendiente
+// (sin emitir a la red), el upsert se cancela y el delete no se encola.
+const DELETE_CANCELS: Record<string, string[]> = {
   session_set_delete: ['session_set_upsert'],
 }
 
@@ -245,6 +256,18 @@ function isAuthError(err: unknown): boolean {
   return /jwt|unauthor|forbidden|token.*expired|session.*invalid/i.test(e.message ?? '')
 }
 
+// Fallos de red transitorios: AbortError (timeout del AbortSignal), perdida de
+// socket (TypeError "Failed to fetch") y variantes. Se reintentan con backoff.
+function isNetworkError(err: unknown): boolean {
+  const e = err as { name?: string; code?: string; message?: string } | null
+  if (!e) return false
+  if (e.name === 'AbortError' || e.code === 'ABORT_ERR') return true
+  if (e.name === 'TypeError' && /fetch|network|failed to fetch/i.test(e.message ?? '')) {
+    return true
+  }
+  return false
+}
+
 // Timeout estricto para liberar el lock aunque la red quede colgada: si la
 // promesa no resuelve en `ms`, se abandona (la op queda en la cola y se
 // reintenta; las ops son idempotentes) y el lock puede liberarse.
@@ -296,20 +319,41 @@ export function subscribeSync(listener: () => void): () => void {
 
 export function enqueue(kind: string, payload: Record<string, unknown>) {
   if (!currentUserId) return
-  const cancelKinds = COALESCE[kind]
+  const fresh = loadQueue()
+  // Coalescing de ediciones: si ya hay un upsert pendiente para la misma
+  // entidad, el ultimo estado reemplaza al anterior (una sola peticion).
+  const mergeKey = UPSERT_MERGE[kind]?.(payload)
+  if (mergeKey) {
+    const idx = fresh.findIndex(
+      (o) => o.kind === kind && UPSERT_MERGE[kind]?.(o.payload) === mergeKey,
+    )
+    if (idx >= 0) {
+      const updated = [...fresh]
+      updated[idx] = { ...updated[idx], payload }
+      saveQueue(updated)
+      notify()
+      scheduleFlush(0)
+      return
+    }
+  }
+  const cancelKinds = DELETE_CANCELS[kind]
   if (cancelKinds) {
     const target = typeof payload.id === 'string' ? payload.id : null
     if (target) {
-      const fresh = loadQueue()
       const idx = fresh.findIndex(
         (o) => cancelKinds.includes(o.kind) && o.payload.id === target,
       )
-      if (idx >= 0) {
+      if (idx >= 0 && !inFlight.has(fresh[idx].id)) {
+        // Upsert aun pendiente (sin emitir): se cancela y el delete no se
+        // encola; la entidad nunca llego a la base de datos.
         saveQueue(fresh.filter((_, i) => i !== idx))
         notify()
         scheduleFlush(0)
         return
       }
+      // Upsert en vuelo: no se cancela. El delete se encola despues, y como el
+      // reintento del upsert conserva su posicion original (antes del delete),
+      // el orden upsert -> delete garantiza que la serie no "resucite".
     }
   }
   const op: PendingOp = {
@@ -320,7 +364,7 @@ export function enqueue(kind: string, payload: Record<string, unknown>) {
     createdAt: new Date().toISOString(),
     userId: currentUserId,
   }
-  saveQueue([...loadQueue(), op])
+  saveQueue([...fresh, op])
   notify()
   scheduleFlush(0)
 }
@@ -391,12 +435,16 @@ async function flushInner() {
     // no encuentre peticiones HTTP huerfanas al reejecutar la misma op.
     const ac = new AbortController()
     const abortTimer = window.setTimeout(() => ac.abort(), OP_TIMEOUT)
+    inFlight.add(op.id)
     try {
       await withTimeout(executor(op, ac.signal), OP_TIMEOUT, op.kind)
       saveQueue(loadQueue().filter((q) => q.id !== op.id))
       notify()
     } catch (err) {
-      if (isAuthError(err)) {
+      // AbortError (timeout con AbortSignal) y perdida de socket (TypeError de
+      // fetch) son fallos transitorios de red: se reintentan con backoff y
+      // nunca se interpretan como error de autenticacion.
+      if (!isNetworkError(err) && isAuthError(err)) {
         setPaused(true)
         return
       }
@@ -408,6 +456,7 @@ async function flushInner() {
     } finally {
       window.clearTimeout(abortTimer)
       if (!ac.signal.aborted) ac.abort()
+      inFlight.delete(op.id)
     }
   }
 }
