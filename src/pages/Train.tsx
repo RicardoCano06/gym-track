@@ -19,7 +19,7 @@ import {
   startSession,
   upsertSessionSet,
 } from '@/lib/db'
-import { genId } from '@/lib/sync'
+import { enqueue, genId } from '@/lib/sync'
 import type { RoutineDay, RoutineExercise, Session, SessionSet } from '@/lib/types'
 
 const RPE_OPTIONS = ['', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10']
@@ -217,6 +217,7 @@ export default function Train() {
       window.setTimeout(() => setSavedMap((p) => ({ ...p, [key]: false })), 1200)
     } catch (err) {
       console.error(err)
+      enqueue('session_set_upsert', { ...entry.row })
       setSavingMap((p) => ({ ...p, [key]: false }))
     }
   }
@@ -233,7 +234,7 @@ export default function Train() {
   function flushAll() {
     pending.current.forEach((entry) => {
       if (entry.timer) clearTimeout(entry.timer)
-      if (entry.row) void upsertSessionSet(entry.row)
+      if (entry.row) enqueue('session_set_upsert', { ...entry.row })
     })
     pending.current.clear()
     setSavingMap({})
@@ -248,7 +249,14 @@ export default function Train() {
   }
 
   useEffect(() => {
+    const flushAllOnHide = () => {
+      if (document.visibilityState === 'hidden') flushAll()
+    }
+    document.addEventListener('visibilitychange', flushAllOnHide)
+    window.addEventListener('pagehide', flushAllOnHide)
     return () => {
+      document.removeEventListener('visibilitychange', flushAllOnHide)
+      window.removeEventListener('pagehide', flushAllOnHide)
       flushAll()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

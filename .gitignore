@@ -22,6 +22,9 @@ dist-ssr
 .dev.vars
 wrangler.log
 
+# E2E artifacts
+scripts/e2e/artifacts/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

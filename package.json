@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:e2e": "node scripts/e2e/runner.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "seed:fetch": "node scripts/fetch-catalog.mjs",

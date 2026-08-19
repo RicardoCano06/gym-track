@@ -23,11 +23,14 @@ export function genId(): string {
 }
 
 const QUEUE_KEY = 'gymtrack-pending-queue'
+const LOCK_KEY = 'gymtrack-sync-lock'
+const LOCK_TTL = 8000
 const MAX_BACKOFF = 15000
 
 let queue: PendingOp[] = loadQueue()
 let flushTimer: number | null = null
 let flushing = false
+let hasLock = false
 
 const listeners = new Set<() => void>()
 const executors = new Map<string, (op: PendingOp) => Promise<void>>()
@@ -40,11 +43,41 @@ function loadQueue(): PendingOp[] {
   }
 }
 
-function persistQueue() {
+function saveQueue(next: PendingOp[]) {
+  queue = next
   try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(next))
   } catch {
     // almacenamiento no disponible: la cola vive solo en memoria
+  }
+}
+
+function acquireLock(): boolean {
+  try {
+    const now = Date.now()
+    const raw = localStorage.getItem(LOCK_KEY)
+    if (raw) {
+      const lock = JSON.parse(raw) as { until: number }
+      if (lock.until > now) return false
+    }
+    const until = now + LOCK_TTL
+    localStorage.setItem(LOCK_KEY, JSON.stringify({ until }))
+    const check = JSON.parse(localStorage.getItem(LOCK_KEY) ?? 'null')
+    if (check?.until !== until) return false
+    hasLock = true
+    return true
+  } catch {
+    return true
+  }
+}
+
+function releaseLock() {
+  if (!hasLock) return
+  hasLock = false
+  try {
+    localStorage.removeItem(LOCK_KEY)
+  } catch {
+    // sin almacenamiento: no hay lock que liberar
   }
 }
 
@@ -78,8 +111,7 @@ export function enqueue(kind: string, payload: Record<string, unknown>) {
     retries: 0,
     createdAt: new Date().toISOString(),
   }
-  queue = [...queue, op]
-  persistQueue()
+  saveQueue([...loadQueue(), op])
   notify()
   scheduleFlush(0)
 }
@@ -97,17 +129,16 @@ export function enqueueDelayed(
     createdAt: new Date().toISOString(),
     availableAt: Date.now() + delayMs,
   }
-  queue = [...queue, op]
-  persistQueue()
+  saveQueue([...loadQueue(), op])
   notify()
   scheduleFlush(0)
 }
 
 export function dequeue(predicate: (op: PendingOp) => boolean) {
-  const before = queue.length
-  queue = queue.filter((op) => !predicate(op))
-  if (queue.length !== before) {
-    persistQueue()
+  const fresh = loadQueue()
+  const filtered = fresh.filter((op) => !predicate(op))
+  if (filtered.length !== fresh.length) {
+    saveQueue(filtered)
     notify()
   }
 }
@@ -126,28 +157,37 @@ function scheduleFlushAt(at: number) {
 }
 
 async function flush() {
-  if (flushing || queue.length === 0) return
+  if (flushing) return
+  if (!acquireLock()) {
+    scheduleFlush(200)
+    return
+  }
   flushing = true
   try {
     const now = Date.now()
-    const pending = queue.filter((op) => (op.availableAt ?? 0) > now)
-    if (pending.length === queue.length) {
-      const nextAt = Math.min(...pending.map((op) => op.availableAt ?? 0))
-      scheduleFlushAt(nextAt)
+    const ops = loadQueue()
+    const due = ops.filter((op) => (op.availableAt ?? 0) <= now)
+    if (due.length === 0) {
+      const future = ops.filter((op) => (op.availableAt ?? 0) > now)
+      if (future.length > 0) {
+        scheduleFlushAt(Math.min(...future.map((op) => op.availableAt ?? 0)))
+      }
       return
     }
-    for (const op of queue) {
-      if ((op.availableAt ?? 0) > now) continue
+    for (const op of due) {
+      // Releer desde localStorage justo antes de ejecutar: si otra pestaña
+      // deshizo (dequeue) la operación, esta ya no está y no debe salir a red.
+      const current = loadQueue()
+      if (!current.some((q) => q.id === op.id)) continue
       const executor = executors.get(op.kind)
       if (!executor) continue
       try {
         await executor(op)
-        queue = queue.filter((q) => q.id !== op.id)
-        persistQueue()
+        saveQueue(loadQueue().filter((q) => q.id !== op.id))
         notify()
       } catch {
         op.retries += 1
-        persistQueue()
+        saveQueue(loadQueue().map((q) => (q.id === op.id ? op : q)))
         notify()
         scheduleFlush(Math.min(MAX_BACKOFF, 1000 * 2 ** Math.min(op.retries, 4)))
         return
@@ -155,11 +195,19 @@ async function flush() {
     }
   } finally {
     flushing = false
-    if (queue.length > 0 && flushTimer === null) scheduleFlush(0)
+    releaseLock()
+    if (loadQueue().length > 0 && flushTimer === null) scheduleFlush(0)
   }
 }
 
 if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === QUEUE_KEY) {
+      queue = loadQueue()
+      notify()
+      scheduleFlush(0)
+    }
+  })
   window.addEventListener('online', () => scheduleFlush(0))
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') scheduleFlush(0)
