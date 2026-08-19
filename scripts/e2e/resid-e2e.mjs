@@ -19,6 +19,12 @@ const run = async () => {
   console.log('BEFORE_ALL:', JSON.stringify(await cleanupE2E()))
   console.log('LOGGED_IN:', await login(page))
 
+  const client = createClient(URL, ANON)
+  const { data: auth } = await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
+  const uid = auth.user?.id
+  const qread = (key) => `JSON.parse(localStorage.getItem('${key}') || '[]')`
+  const qkey = `gymtrack-sync-queue-${uid}`
+
   await page.nav(BASE_URL + '/rutinas/' + ROUTINE_ID)
   await sleep(2500)
   const rows = await page.eval(`(() => [...document.querySelectorAll('button')].filter(b=>b.title==='Quitar ejercicio').length)()`)
@@ -26,14 +32,14 @@ const run = async () => {
 
   await page.eval(`(() => { [...document.querySelectorAll('button')].find(b=>b.title==='Quitar ejercicio')?.click() })()`)
   await sleep(400)
-  const q = await page.eval(`JSON.parse(localStorage.getItem('gymtrack-pending-queue')||'[]')`)
+  const q = await page.eval(qread(qkey))
   console.log('QUEUE_AFTER_REMOVE:', JSON.stringify(q.map(o=>({ kind: o.kind, id: o.payload?.id, availableAt: o.availableAt, now: Date.now() }))))
   const undoOk = q.some(o => o.kind === 'routine_exercise_remove' && o.availableAt && o.availableAt > Date.now() + 3000)
   console.log('UNDO_QUEUE_OK:', undoOk)
 
   await page.eval(`(() => { [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Deshacer')?.click() })()`)
   await sleep(500)
-  const q2 = await page.eval(`JSON.parse(localStorage.getItem('gymtrack-pending-queue')||'[]')`)
+  const q2 = await page.eval(qread(qkey))
   console.log('QUEUE_AFTER_UNDO:', JSON.stringify(q2.map(o=>o.kind)))
   const rows2 = await page.eval(`(() => [...document.querySelectorAll('button')].filter(b=>b.title==='Quitar ejercicio').length)()`)
   console.log('ROWS_AFTER_UNDO:', rows2)
@@ -47,9 +53,6 @@ const run = async () => {
   await page.eval(`(() => { [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Terminar sin sensación')?.click() })()`)
   await sleep(3000)
 
-  const client = createClient(URL, ANON)
-  const { data: auth } = await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
-  const uid = auth.user?.id
   const { data: sess } = await client.from('sessions').select('id, ended_at').eq('user_id', uid).eq('day_id', DAY_ID).not('ended_at','is',null).order('ended_at',{ascending:false}).limit(1)
   const sid = sess?.[0]?.id
   const { data: sets } = sid ? await client.from('session_sets').select('weight_kg, reps').eq('session_id', sid) : { data: null }

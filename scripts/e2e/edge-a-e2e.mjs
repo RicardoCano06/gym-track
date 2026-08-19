@@ -51,13 +51,14 @@ async function seed() {
     if (error) throw error
     rows.push(re)
   }
-  return { routineId: routine.id, re1: rows[0], re2: rows[1] }
+  return { routineId: routine.id, re1: rows[0], re2: rows[1], uid }
 }
 
 const removeRow = (exerciseId) =>
   `(() => { const li = [...document.querySelectorAll('li')].find(l => l.querySelector('a[href*="${exerciseId}"]')); if (li) li.querySelector('button[title="Quitar ejercicio"]').click() })()`
 
-const readQueue = `JSON.parse(localStorage.getItem('gymtrack-pending-queue') || '[]')`
+const readQueue = (uid) =>
+  `JSON.parse(localStorage.getItem('gymtrack-sync-queue-${uid}') || '[]')`
 
 const run = async () => {
   await closeStrayPages()
@@ -77,8 +78,8 @@ const run = async () => {
 
   await pageA.eval(removeRow(seedData.re1.exercise_id))
   await sleep(400)
-  const qA1 = await pageA.eval(readQueue)
-  const qB1 = await pageB.eval(readQueue)
+  const qA1 = await pageA.eval(readQueue(seedData.uid))
+  const qB1 = await pageB.eval(readQueue(seedData.uid))
   console.log('QUEUE_A_AFTER_REMOVE:', JSON.stringify(qA1.map((o) => ({ kind: o.kind, id: o.payload?.id, availableAt: o.availableAt }))))
   console.log('QUEUE_B_AFTER_REMOVE:', JSON.stringify(qB1.map((o) => ({ kind: o.kind, id: o.payload?.id }))))
   const crossTabSeen = qB1.some((o) => o.kind === 'routine_exercise_remove' && o.payload?.id === seedData.re1.id)
@@ -86,8 +87,8 @@ const run = async () => {
 
   await pageA.eval(`(() => { [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Deshacer')?.click() })()`)
   await sleep(500)
-  const qA2 = await pageA.eval(readQueue)
-  const qB2 = await pageB.eval(readQueue)
+  const qA2 = await pageA.eval(readQueue(seedData.uid))
+  const qB2 = await pageB.eval(readQueue(seedData.uid))
   console.log('QUEUE_A_AFTER_UNDO:', JSON.stringify(qA2.map((o) => o.kind)))
   console.log('QUEUE_B_AFTER_UNDO:', JSON.stringify(qB2.map((o) => o.kind)))
 
@@ -99,7 +100,7 @@ const run = async () => {
 
   await pageA.eval(removeRow(seedData.re2.exercise_id))
   await sleep(400)
-  const qA3 = await pageA.eval(readQueue)
+  const qA3 = await pageA.eval(readQueue(seedData.uid))
   console.log('QUEUE_A_AFTER_REMOVE2:', JSON.stringify(qA3.map((o) => ({ kind: o.kind, id: o.payload?.id, availableAt: o.availableAt }))))
   await pageA.closeTab()
 

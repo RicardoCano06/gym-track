@@ -32,6 +32,28 @@ async function waitFor(url, timeoutMs = READY_TIMEOUT) {
   return false
 }
 
+// La SPA esta lista solo cuando el HTML servido contiene el nodo raiz y el
+// bundle principal; un ping TCP no basta en runners de CI saturados.
+async function isSpaReady(url) {
+  try {
+    const r = await fetch(url, { method: 'GET' })
+    if (!r.ok) return false
+    const html = await r.text()
+    return html.includes('<div id="root">') && html.includes('/assets/index-')
+  } catch {
+    return false
+  }
+}
+
+async function waitForSpa(url, timeoutMs = READY_TIMEOUT) {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    if (await isSpaReady(url)) return true
+    await sleep(500)
+  }
+  return false
+}
+
 function npmBin() {
   return isWin ? 'npm.cmd' : 'npm'
 }
@@ -50,12 +72,11 @@ async function ensurePreview() {
     ['run', 'preview', '--', '--port', PORT, '--strictPort'],
     { cwd: ROOT, stdio: 'inherit' },
   )
-  const ok = await waitFor(BASE_URL)
+  const ok = await waitForSpa(BASE_URL)
   if (!ok) {
-    console.error(`el preview no levanto en ${BASE_URL} tras ${READY_TIMEOUT}ms`)
+    console.error(`la SPA no quedo lista en ${BASE_URL} tras ${READY_TIMEOUT}ms (HTML sin raiz o bundle)`)
     process.exit(1)
   }
-  await sleep(500)
   return child
 }
 
@@ -95,7 +116,6 @@ async function ensureBrowser() {
     console.error(`el navegador no expuso el puerto de depuracion tras ${READY_TIMEOUT}ms`)
     process.exit(1)
   }
-  await sleep(500)
   return child
 }
 

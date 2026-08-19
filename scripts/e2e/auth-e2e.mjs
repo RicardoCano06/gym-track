@@ -49,14 +49,19 @@ async function seed() {
   return { reId: re.id, uid }
 }
 
-const readQueue = `JSON.parse(localStorage.getItem('gymtrack-pending-queue') || '[]')`
-const readPaused = `localStorage.getItem('gymtrack-sync-paused')`
-const injectOp = (op) => `(() => {
-  const q = JSON.parse(localStorage.getItem('gymtrack-pending-queue') || '[]')
-  localStorage.setItem('gymtrack-pending-queue', JSON.stringify([...q, ${JSON.stringify(op)}]))
-  return ${JSON.stringify(op.id)}
-})()`
+const makeOp = (id, payload, userId) => ({
+  id,
+  kind: 'routine_exercise_remove',
+  payload,
+  retries: 0,
+  createdAt: new Date().toISOString(),
+  availableAt: Date.now() - 1000,
+  userId,
+})
+const injectInto = (key, op) =>
+  `localStorage.setItem('${key}', JSON.stringify([${JSON.stringify(op)}]))`
 const triggerFlush = `(() => { window.dispatchEvent(new Event('online')); document.dispatchEvent(new Event('visibilitychange')) })()`
+const readRaw = (key) => `localStorage.getItem('${key}')`
 
 const run = async () => {
   await closeStrayPages()
@@ -67,53 +72,28 @@ const run = async () => {
   const page = await openPage()
   console.log('LOGGED_IN:', await login(page))
 
-  await page.eval(`(() => { [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Salir')?.click() })()`)
-  await sleep(1500)
-  console.log('PAUSED_AFTER_LOGOUT:', await page.eval(readPaused))
-
-  const foreignOp = {
-    id: crypto.randomUUID(),
-    kind: 'routine_exercise_remove',
-    payload: { id: seedData.reId },
-    retries: 0,
-    createdAt: new Date().toISOString(),
-    availableAt: Date.now() - 1000,
-    userId: 'foreign-user-123',
-  }
-  await page.eval(injectOp(foreignOp))
+  const foreignUser = 'foreign-user-123'
+  const foreignKey = `gymtrack-sync-queue-${foreignUser}`
+  const foreignOp = makeOp(crypto.randomUUID(), { id: seedData.reId }, foreignUser)
+  await page.eval(injectInto(foreignKey, foreignOp))
   await page.eval(triggerFlush)
-  await sleep(2500)
-  const qWhilePaused = await page.eval(readQueue)
-  console.log('FOREIGN_QUEUE_WHILE_PAUSED:', JSON.stringify(qWhilePaused.map((o) => [o.kind, o.userId])))
+  await sleep(3000)
 
   const client = createClient(URL, ANON)
   await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
-  const { data: reWhilePaused } = await client.from('routine_exercises').select('id').eq('id', seedData.reId)
-  console.log('RE_INTACT_WHILE_PAUSED:', (reWhilePaused ?? []).length > 0)
-
-  console.log('LOGGED_IN_AGAIN:', await login(page))
-  await sleep(3000)
-  const pausedAfterLogin = await page.eval(readPaused)
-  const qAfterLogin = await page.eval(readQueue)
-  console.log('PAUSED_AFTER_LOGIN:', pausedAfterLogin)
-  console.log('QUEUE_AFTER_LOGIN_FOREIGN_DISCARDED:', JSON.stringify(qAfterLogin.map((o) => o.kind)))
   const { data: reAfterForeign } = await client.from('routine_exercises').select('id').eq('id', seedData.reId)
-  console.log('RE_INTACT_AFTER_FOREIGN_DISCARDED:', (reAfterForeign ?? []).length > 0)
+  console.log('RE_INTACT_AFTER_FOREIGN_FLUSH:', (reAfterForeign ?? []).length > 0)
+  const foreignRaw = await page.eval(readRaw(foreignKey))
+  const foreignParsed = JSON.parse(foreignRaw || 'null')
+  console.log('FOREIGN_QUEUE_PRESERVED:', foreignParsed !== null && foreignParsed.length === 1 && foreignParsed[0].id === foreignOp.id && foreignParsed[0].userId === foreignUser)
 
-  const ownOp = {
-    id: crypto.randomUUID(),
-    kind: 'routine_exercise_remove',
-    payload: { id: seedData.reId },
-    retries: 0,
-    createdAt: new Date().toISOString(),
-    availableAt: Date.now() - 1000,
-    userId: seedData.uid,
-  }
-  await page.eval(injectOp(ownOp))
+  const ownKey = `gymtrack-sync-queue-${seedData.uid}`
+  const ownOp = makeOp(crypto.randomUUID(), { id: seedData.reId }, seedData.uid)
+  await page.eval(injectInto(ownKey, ownOp))
   await page.eval(triggerFlush)
   await sleep(3000)
-  const qAfterOwn = await page.eval(readQueue)
-  console.log('QUEUE_AFTER_OWN_FLUSH:', JSON.stringify(qAfterOwn.map((o) => o.kind)))
+  const ownRaw = await page.eval(readRaw(ownKey))
+  console.log('OWN_QUEUE_DRAINED:', JSON.parse(ownRaw || '[]').length === 0)
   const { data: reAfterOwn } = await client.from('routine_exercises').select('id').eq('id', seedData.reId)
   console.log('RE_DELETED_AFTER_OWN_FLUSH:', (reAfterOwn ?? []).length === 0)
 

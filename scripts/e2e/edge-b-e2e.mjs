@@ -43,7 +43,7 @@ async function seed() {
     rest_seconds: 60,
   })
   if (ierr) throw ierr
-  return { dayId: day.id }
+  return { dayId: day.id, uid }
 }
 
 async function weightsForDay(uid, dayId) {
@@ -63,13 +63,14 @@ async function weightsForDay(uid, dayId) {
 const typeWeight = (value) =>
   `(() => { const inp = document.querySelector('input[placeholder="Peso"]'); if (!inp) return false; const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; s.call(inp, ${JSON.stringify(String(value))}); inp.dispatchEvent(new Event('input', { bubbles: true })); return true })()`
 
-const forceHiddenAndRead = `(() => {
+const forceHiddenAndRead = (uid) => `(() => {
   Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true })
   document.dispatchEvent(new Event('visibilitychange'))
-  return JSON.parse(localStorage.getItem('gymtrack-pending-queue') || '[]')
+  return JSON.parse(localStorage.getItem('gymtrack-sync-queue-${uid}') || '[]')
 })()`
 
-const readQueue = `JSON.parse(localStorage.getItem('gymtrack-pending-queue') || '[]')`
+const readQueue = (uid) =>
+  `JSON.parse(localStorage.getItem('gymtrack-sync-queue-${uid}') || '[]')`
 
 const run = async () => {
   await closeStrayPages()
@@ -85,12 +86,12 @@ const run = async () => {
   console.log('TRAIN_LOADED:', sessionVisible)
 
   await pageA.eval(typeWeight(42))
-  const qSync = await pageA.eval(forceHiddenAndRead)
+  const qSync = await pageA.eval(forceHiddenAndRead(seedData.uid))
   console.log('QUEUE_AFTER_FORCED_HIDDEN:', JSON.stringify(qSync.map((o) => ({ kind: o.kind, weight: o.payload?.weight_kg }))))
 
   await pageA.eval(`(() => { Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')) })()`)
   await sleep(2500)
-  const qAfterVisible = await pageA.eval(readQueue)
+  const qAfterVisible = await pageA.eval(readQueue(seedData.uid))
   console.log('QUEUE_AFTER_VISIBLE:', JSON.stringify(qAfterVisible.map((o) => ({ kind: o.kind, retries: o.retries, weight: o.payload?.weight_kg }))))
   const client = createClient(URL, ANON)
   const { data: auth } = await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
@@ -101,7 +102,7 @@ const run = async () => {
   console.log('DB_AFTER_VISIBLE:', JSON.stringify(w1))
 
   await pageA.eval(typeWeight(55))
-  const qBeforeClose = await pageA.eval(forceHiddenAndRead)
+  const qBeforeClose = await pageA.eval(forceHiddenAndRead(seedData.uid))
   console.log('QUEUE_BEFORE_ABRUPT_CLOSE:', JSON.stringify(qBeforeClose.map((o) => ({ kind: o.kind, weight: o.payload?.weight_kg }))))
   await pageA.closeTab()
   await sleep(1500)
@@ -109,7 +110,7 @@ const run = async () => {
   const pageC = await openPage()
   await login(pageC)
   await sleep(2000)
-  const qC = await pageC.eval(readQueue)
+  const qC = await pageC.eval(readQueue(seedData.uid))
   console.log('QUEUE_C_AFTER_ABRUPT_CLOSE:', JSON.stringify(qC.map((o) => ({ kind: o.kind, weight: o.payload?.weight_kg }))))
   await sleep(2500)
   const w2 = await weightsForDay(uid, seedData.dayId)

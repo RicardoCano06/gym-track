@@ -23,11 +23,12 @@ export function genId(): string {
   })
 }
 
-const QUEUE_KEY = 'gymtrack-pending-queue'
-const LOCK_KEY = 'gymtrack-sync-lock'
-const PAUSE_KEY = 'gymtrack-sync-paused'
+const QUEUE_PREFIX = 'gymtrack-sync-queue-'
+const LOCK_PREFIX = 'gymtrack-sync-lock-'
+const PAUSE_PREFIX = 'gymtrack-sync-paused-'
 const LOCK_TTL = 2500
 const LOCK_HEARTBEAT = 800
+const OP_TIMEOUT = 15000
 const MAX_BACKOFF = 15000
 
 let queue: PendingOp[] = loadQueue()
@@ -42,51 +43,69 @@ let currentUserId: string | null = null
 const listeners = new Set<() => void>()
 const executors = new Map<string, (op: PendingOp) => Promise<void>>()
 
+// Cada cuenta conserva su cola en un namespace propio de localStorage, de modo
+// que un cambio de sesion en el mismo dispositivo no descarta ni mezcla las
+// mutaciones pendientes de otro usuario.
+function userKey(prefix: string): string | null {
+  return currentUserId ? `${prefix}${currentUserId}` : null
+}
+
 function loadQueue(): PendingOp[] {
+  const key = userKey(QUEUE_PREFIX)
+  if (!key) return []
   try {
-    return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]') as PendingOp[]
+    const parsed = JSON.parse(localStorage.getItem(key) ?? '[]') as PendingOp[]
+    return parsed.filter((op) => op.userId === currentUserId)
   } catch {
     return []
   }
 }
 
 function saveQueue(next: PendingOp[]) {
+  const key = userKey(QUEUE_PREFIX)
+  if (!key) return
   queue = next
   try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(next))
+    localStorage.setItem(key, JSON.stringify(next))
   } catch {
     // almacenamiento no disponible: la cola vive solo en memoria
   }
 }
 
 function loadPaused(): boolean {
+  const key = userKey(PAUSE_PREFIX)
+  if (!key) return false
   try {
-    return localStorage.getItem(PAUSE_KEY) === '1'
+    return localStorage.getItem(key) === '1'
   } catch {
     return false
   }
 }
 
 function persistPaused(value: boolean) {
+  const key = userKey(PAUSE_PREFIX)
+  if (!key) return
   try {
-    localStorage.setItem(PAUSE_KEY, value ? '1' : '0')
+    localStorage.setItem(key, value ? '1' : '0')
   } catch {
     // sin almacenamiento: la pausa vive solo en memoria
   }
 }
 
 function acquireLock(): boolean {
+  const key = userKey(LOCK_PREFIX)
+  if (!key) return true
   try {
     const now = Date.now()
-    const raw = localStorage.getItem(LOCK_KEY)
+    const raw = localStorage.getItem(key)
     if (raw) {
       const lock = JSON.parse(raw) as { owner: string; until: number }
       if (lock.until > now) return false
     }
     lockOwner = genId()
     const until = now + LOCK_TTL
-    localStorage.setItem(LOCK_KEY, JSON.stringify({ owner: lockOwner, until }))
-    const check = JSON.parse(localStorage.getItem(LOCK_KEY) ?? 'null')
+    localStorage.setItem(key, JSON.stringify({ owner: lockOwner, until }))
+    const check = JSON.parse(localStorage.getItem(key) ?? 'null')
     if (check?.owner !== lockOwner) {
       lockOwner = ''
       return false
@@ -100,9 +119,10 @@ function acquireLock(): boolean {
 }
 
 function renewLock() {
-  if (!hasLock || !lockOwner) return
+  const key = userKey(LOCK_PREFIX)
+  if (!hasLock || !lockOwner || !key) return
   try {
-    const raw = localStorage.getItem(LOCK_KEY)
+    const raw = localStorage.getItem(key)
     const lock = raw ? JSON.parse(raw) : null
     if (lock?.owner !== lockOwner) {
       hasLock = false
@@ -111,7 +131,7 @@ function renewLock() {
       return
     }
     localStorage.setItem(
-      LOCK_KEY,
+      key,
       JSON.stringify({ owner: lockOwner, until: Date.now() + LOCK_TTL }),
     )
   } catch {
@@ -132,12 +152,13 @@ function stopHeartbeat() {
 
 function releaseLock() {
   stopHeartbeat()
-  if (!hasLock || !lockOwner) return
+  const key = userKey(LOCK_PREFIX)
+  if (!hasLock || !lockOwner || !key) return
   hasLock = false
   try {
-    const raw = localStorage.getItem(LOCK_KEY)
+    const raw = localStorage.getItem(key)
     const lock = raw ? JSON.parse(raw) : null
-    if (lock?.owner === lockOwner) localStorage.removeItem(LOCK_KEY)
+    if (lock?.owner === lockOwner) localStorage.removeItem(key)
   } catch {
     // sin almacenamiento: no hay lock que liberar
   }
@@ -170,6 +191,29 @@ function isAuthError(err: unknown): boolean {
   return /jwt|unauthor|forbidden|token.*expired|session.*invalid/i.test(e.message ?? '')
 }
 
+// Timeout estricto para liberar el lock aunque la red quede colgada: si la
+// promesa no resuelve en `ms`, se abandona (la op queda en la cola y se
+// reintenta; las ops son idempotentes) y el lock puede liberarse.
+function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      const err = new Error(`sync: timeout ${tag} > ${ms}ms`)
+      err.name = 'SyncTimeoutError'
+      reject(err)
+    }, ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 function notify() {
   for (const listener of listeners) listener()
 }
@@ -197,6 +241,7 @@ export function subscribeSync(listener: () => void): () => void {
 }
 
 export function enqueue(kind: string, payload: Record<string, unknown>) {
+  if (!currentUserId) return
   const op: PendingOp = {
     id: genId(),
     kind,
@@ -215,6 +260,7 @@ export function enqueueDelayed(
   payload: Record<string, unknown>,
   delayMs: number,
 ) {
+  if (!currentUserId) return
   const op: PendingOp = {
     id: genId(),
     kind,
@@ -253,16 +299,7 @@ function scheduleFlushAt(at: number) {
 
 async function flushInner() {
   const now = Date.now()
-  let ops = loadQueue()
-  // Aislar operaciones de otra sesion (fuga cross-user): si el user_id no
-  // coincide con la sesion activa se descartan sin ejecutarse. Las operaciones
-  // viejas sin user_id (versiones previas) tambien se descartan por seguridad.
-  const kept = ops.filter((op) => op.userId === currentUserId)
-  if (kept.length !== ops.length) {
-    saveQueue(kept)
-    notify()
-    ops = kept
-  }
+  const ops = loadQueue()
   const due = ops.filter((op) => (op.availableAt ?? 0) <= now)
   if (due.length === 0) {
     const future = ops.filter((op) => (op.availableAt ?? 0) > now)
@@ -280,7 +317,9 @@ async function flushInner() {
     const executor = executors.get(op.kind)
     if (!executor) continue
     try {
-      await executor(op)
+      // Timeout estricto: una peticion colgada no retiene el lock para siempre;
+      // la op queda en la cola y se reintenta (las ops son idempotentes).
+      await withTimeout(executor(op), OP_TIMEOUT, op.kind)
       saveQueue(loadQueue().filter((q) => q.id !== op.id))
       notify()
     } catch (err) {
@@ -310,43 +349,58 @@ async function flushLocalStorageLocked() {
 }
 
 async function flush() {
-  if (flushing || paused) return
+  if (flushing || paused || !currentUserId) return
   flushing = true
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.locks?.request === 'function') {
       // Web Locks: exclusion mutua entre pestanas sin depender de timers del
       // event loop. El lock se mantiene mientras el callback este pendiente
       // aunque la pestana se congele; se libera al completar o destruirse.
-      await navigator.locks.request('gymtrack-sync', async () => {
+      await navigator.locks.request(`gymtrack-sync-${currentUserId}`, async () => {
         if (paused) return
         await flushInner()
       })
     } else {
       await flushLocalStorageLocked()
     }
+  } catch {
+    // fallback ante fallo de Web Locks
+    await flushLocalStorageLocked()
   } finally {
     flushing = false
     if (!paused && loadQueue().length > 0 && flushTimer === null) scheduleFlush(0)
   }
 }
 
+function applySession(userId: string | null) {
+  currentUserId = userId
+  queue = loadQueue()
+  paused = loadPaused()
+  if (userId && paused) {
+    paused = false
+    persistPaused(false)
+  }
+  notify()
+  if (userId) scheduleFlush(0)
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === QUEUE_KEY) {
+    if (e.key === null) return
+    if (e.key.startsWith(QUEUE_PREFIX) && e.key === userKey(QUEUE_PREFIX)) {
       queue = loadQueue()
       notify()
       scheduleFlush(0)
-    } else if (e.key === PAUSE_KEY) {
+    } else if (e.key.startsWith(PAUSE_PREFIX) && e.key === userKey(PAUSE_PREFIX)) {
       paused = loadPaused()
       notify()
     }
   })
   supabase.auth.getSession().then(({ data }) => {
-    currentUserId = data.session?.user.id ?? null
+    applySession(data.session?.user.id ?? null)
   })
   supabase.auth.onAuthStateChange((_event, session) => {
-    currentUserId = session?.user.id ?? null
-    setPaused(!session)
+    applySession(session?.user.id ?? null)
   })
   window.addEventListener('online', () => scheduleFlush(0))
   document.addEventListener('visibilitychange', () => {
