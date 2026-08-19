@@ -97,6 +97,22 @@ const run = async () => {
   const { data: reAfterOwn } = await client.from('routine_exercises').select('id').eq('id', seedData.reId)
   console.log('RE_DELETED_AFTER_OWN_FLUSH:', (reAfterOwn ?? []).length === 0)
 
+  const staleKey = 'gymtrack-sync-queue-stale-user-1'
+  const freshKey = 'gymtrack-sync-queue-fresh-user-2'
+  const staleOp = makeOp(crypto.randomUUID(), { id: seedData.reId }, 'stale-user-1')
+  staleOp.createdAt = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString()
+  await page.eval(injectInto(staleKey, staleOp))
+  await page.eval(injectInto(freshKey, makeOp(crypto.randomUUID(), { id: seedData.reId }, 'fresh-user-2')))
+  await page.eval(`(() => { [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Salir')?.click() })()`)
+  await sleep(1500)
+  console.log('LOGGED_IN_FINAL:', await login(page))
+  await sleep(2000)
+  const staleRaw = await page.eval(readRaw(staleKey))
+  const freshRaw = await page.eval(readRaw(freshKey))
+  console.log('STALE_QUEUE_SWEPT:', staleRaw === null || JSON.parse(staleRaw || '[]').length === 0)
+  console.log('FRESH_FOREIGN_KEPT:', JSON.parse(freshRaw || '[]').length === 1)
+  await page.eval(`(() => { ['${foreignKey}','${staleKey}','${freshKey}'].forEach(k => localStorage.removeItem(k)) })()`)
+
   page.close()
   console.log('AFTER_ALL:', JSON.stringify(await cleanupE2E()))
   process.exit(0)

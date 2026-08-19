@@ -30,6 +30,7 @@ const LOCK_TTL = 2500
 const LOCK_HEARTBEAT = 800
 const OP_TIMEOUT = 15000
 const MAX_BACKOFF = 15000
+const QUEUE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 let queue: PendingOp[] = loadQueue()
 let flushTimer: number | null = null
@@ -89,6 +90,51 @@ function persistPaused(value: boolean) {
     localStorage.setItem(key, value ? '1' : '0')
   } catch {
     // sin almacenamiento: la pausa vive solo en memoria
+  }
+}
+
+function removeUserKeys(uid: string) {
+  try {
+    localStorage.removeItem(QUEUE_PREFIX + uid)
+    localStorage.removeItem(LOCK_PREFIX + uid)
+    localStorage.removeItem(PAUSE_PREFIX + uid)
+  } catch {
+    // sin almacenamiento: no hay nada que limpiar
+  }
+}
+
+// Politica de retencion: las colas de usuarios que no han escrito nada en
+// 30 dias se descartan para no agotar la cuota de localStorage en
+// dispositivos compartidos. Las colas vacias se limpian de inmediato.
+function sweepExpiredQueues() {
+  try {
+    const keys: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k) keys.push(k)
+    }
+    const users = new Set<string>()
+    for (const k of keys) {
+      if (k.startsWith(QUEUE_PREFIX)) users.add(k.slice(QUEUE_PREFIX.length))
+    }
+    for (const uid of users) {
+      if (uid === currentUserId) continue
+      let lastActive = 0
+      try {
+        const parsed = JSON.parse(localStorage.getItem(QUEUE_PREFIX + uid) ?? '[]') as PendingOp[]
+        if (parsed.length === 0) {
+          removeUserKeys(uid)
+          continue
+        }
+        lastActive = Math.max(0, ...parsed.map((o) => new Date(o.createdAt).getTime() || 0))
+      } catch {
+        removeUserKeys(uid)
+        continue
+      }
+      if (Date.now() - lastActive > QUEUE_TTL_MS) removeUserKeys(uid)
+    }
+  } catch {
+    // sin almacenamiento: no hay colas que barrer
   }
 }
 
@@ -380,6 +426,7 @@ function applySession(userId: string | null) {
     paused = false
     persistPaused(false)
   }
+  sweepExpiredQueues()
   notify()
   if (userId) scheduleFlush(0)
 }
@@ -387,15 +434,16 @@ function applySession(userId: string | null) {
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === null) return
-    if (e.key.startsWith(QUEUE_PREFIX) && e.key === userKey(QUEUE_PREFIX)) {
+    if (e.key === userKey(QUEUE_PREFIX)) {
       queue = loadQueue()
       notify()
       scheduleFlush(0)
-    } else if (e.key.startsWith(PAUSE_PREFIX) && e.key === userKey(PAUSE_PREFIX)) {
+    } else if (e.key === userKey(PAUSE_PREFIX)) {
       paused = loadPaused()
       notify()
     }
   })
+  sweepExpiredQueues()
   supabase.auth.getSession().then(({ data }) => {
     applySession(data.session?.user.id ?? null)
   })
