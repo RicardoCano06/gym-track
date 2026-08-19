@@ -93,11 +93,10 @@ export default function RoutineDetail() {
     })
   }
 
-  async function handleAddExercise(exercise: Exercise) {
-    if (!modalDay) return
-    const position = (modalDay.exercises?.length ?? 0) + 1
+  async function handleAddExercise(day: RoutineDay, exercise: Exercise) {
+    const position = (day.exercises?.length ?? 0) + 1
     try {
-      await addExerciseToDay(modalDay.id, exercise.id, position)
+      await addExerciseToDay(day.id, exercise.id, position)
       setModalDay(null)
       await refresh()
     } catch (err) {
@@ -234,7 +233,7 @@ export default function RoutineDetail() {
             groups={groups}
             onUpdateDay={(patch) => handleUpdateDay(day, patch)}
             onDelete={() => handleDeleteDay(day)}
-            onAddExercise={handleAddExercise}
+            onAddExercise={(d, ex) => handleAddExercise(d, ex)}
             onOpenModal={() => setModalDay(day)}
             onRemoveExercise={async (re) => {
               await removeRoutineExercise(re.id)
@@ -251,7 +250,7 @@ export default function RoutineDetail() {
       {modalDay && (
         <AddExerciseModal
           onClose={() => setModalDay(null)}
-          onSelect={handleAddExercise}
+          onSelect={(ex) => handleAddExercise(modalDay, ex)}
         />
       )}
       {dialog}
@@ -264,7 +263,7 @@ interface DayCardProps {
   groups: string[]
   onUpdateDay: (patch: Partial<Pick<RoutineDay, 'name' | 'weekday' | 'goal'>>) => void
   onDelete: () => void
-  onAddExercise: (exercise: Exercise) => void
+  onAddExercise: (day: RoutineDay, exercise: Exercise) => void
   onOpenModal: () => void
   onRemoveExercise: (re: RoutineExercise) => void
   onUpdateExercise: (
@@ -477,14 +476,14 @@ function DayCard({
                   />
                 )}
                 <button
-                  onClick={() => onAddExercise(ex)}
+                  onClick={() => onAddExercise(day, ex)}
                   className="min-w-0 flex-1 truncate text-left text-sm text-soft transition-colors hover:text-emerald-400"
                   title="Agregar a este día"
                 >
                   {ex.name}
                 </button>
                 <button
-                  onClick={() => onAddExercise(ex)}
+                  onClick={() => onAddExercise(day, ex)}
                   className="flex min-h-11 shrink-0 items-center rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500 hover:text-neutral-950"
                 >
                   + Agregar

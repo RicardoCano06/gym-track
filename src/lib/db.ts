@@ -161,7 +161,7 @@ export async function fetchRoutineDetail(id: string) {
   const { data, error: err } = await supabase
     .from('routine_days')
     .select(
-      '*, routine_exercises(*, exercises(id, name, image_url, muscle_primary, equipment))',
+      '*, exercises:routine_exercises(*, exercises(id, name, image_url, muscle_primary, equipment))',
     )
     .eq('routine_id', id)
     .order('day_number')
@@ -281,7 +281,7 @@ export async function fetchExercisesByGroup(
 export async function fetchDayDetail(dayId: string): Promise<RoutineDay> {
   const { data, error } = await supabase
     .from('routine_days')
-    .select('*, routine_exercises(*, exercises(id, name, image_url, muscle_primary))')
+    .select('*, exercises:routine_exercises(*, exercises(id, name, image_url, muscle_primary))')
     .eq('id', dayId)
     .single()
   if (error) throw error
