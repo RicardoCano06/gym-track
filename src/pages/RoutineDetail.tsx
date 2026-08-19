@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import AddExerciseModal from '@/components/AddExerciseModal'
+import AddExerciseInline from '@/components/AddExerciseInline'
 import SwipeRow from '@/components/SwipeRow'
 import { useConfirm } from '@/lib/use-confirm'
 import { useToast } from '@/lib/toast-context'
@@ -30,7 +30,6 @@ export default function RoutineDetail() {
   const [newDayName, setNewDayName] = useState('')
   const [newDayWeekday, setNewDayWeekday] = useState('')
   const [newDayGoal, setNewDayGoal] = useState('')
-  const [modalDay, setModalDay] = useState<RoutineDay | null>(null)
   const [saving, setSaving] = useState(false)
 
   const refresh = async () => {
@@ -97,7 +96,6 @@ export default function RoutineDetail() {
     const position = (day.exercises?.length ?? 0) + 1
     try {
       await addExerciseToDay(day.id, exercise.id, position)
-      setModalDay(null)
       await refresh()
     } catch (err) {
       console.error(err)
@@ -234,7 +232,6 @@ export default function RoutineDetail() {
             onUpdateDay={(patch) => handleUpdateDay(day, patch)}
             onDelete={() => handleDeleteDay(day)}
             onAddExercise={(d, ex) => handleAddExercise(d, ex)}
-            onOpenModal={() => setModalDay(day)}
             onRemoveExercise={async (re) => {
               await removeRoutineExercise(re.id)
               await refresh()
@@ -247,12 +244,6 @@ export default function RoutineDetail() {
         ))}
       </div>
 
-      {modalDay && (
-        <AddExerciseModal
-          onClose={() => setModalDay(null)}
-          onSelect={(ex) => handleAddExercise(modalDay, ex)}
-        />
-      )}
       {dialog}
     </div>
   )
@@ -264,7 +255,6 @@ interface DayCardProps {
   onUpdateDay: (patch: Partial<Pick<RoutineDay, 'name' | 'weekday' | 'goal'>>) => void
   onDelete: () => void
   onAddExercise: (day: RoutineDay, exercise: Exercise) => void
-  onOpenModal: () => void
   onRemoveExercise: (re: RoutineExercise) => void
   onUpdateExercise: (
     re: RoutineExercise,
@@ -281,7 +271,6 @@ function DayCard({
   onUpdateDay,
   onDelete,
   onAddExercise,
-  onOpenModal,
   onRemoveExercise,
   onUpdateExercise,
   onToggleSuperset,
@@ -494,12 +483,7 @@ function DayCard({
         </div>
       )}
 
-      <button
-        onClick={onOpenModal}
-        className="block w-full border-t border-edge px-4 py-3 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/5"
-      >
-        + Agregar ejercicio
-      </button>
+      <AddExerciseInline day={day} onAddExercise={onAddExercise} />
     </section>
   )
 }
