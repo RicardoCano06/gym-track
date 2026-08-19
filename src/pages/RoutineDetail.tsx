@@ -4,12 +4,10 @@ import { Link, useParams } from 'react-router-dom'
 import DayCard from '@/components/DayCard'
 import AddExerciseOverlay from '@/components/AddExerciseOverlay'
 import { useToast } from '@/lib/toast-context'
-import { WEEKDAYS } from '@/lib/constants'
 import {
   addExerciseToDay,
   createDay,
   deleteDay,
-  fetchMuscleGroups,
   fetchRoutineDetail,
   removeRoutineExercise,
   updateDay,
@@ -22,11 +20,8 @@ export default function RoutineDetail() {
   const { pushToast } = useToast()
   const [routine, setRoutine] = useState<Routine | null>(null)
   const [days, setDays] = useState<RoutineDay[]>([])
-  const [groups, setGroups] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [newDayName, setNewDayName] = useState('')
-  const [newDayWeekday, setNewDayWeekday] = useState('')
-  const [newDayGoal, setNewDayGoal] = useState('')
   const [saving, setSaving] = useState(false)
   const [overlayDay, setOverlayDay] = useState<RoutineDay | null>(null)
 
@@ -40,7 +35,7 @@ export default function RoutineDetail() {
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    Promise.all([refresh(), fetchMuscleGroups().then(setGroups)])
+    refresh()
       .catch(console.error)
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,17 +46,9 @@ export default function RoutineDetail() {
     if (!routine || !newDayName.trim() || saving) return
     setSaving(true)
     try {
-      await createDay(
-        routine.id,
-        days.length + 1,
-        newDayName.trim(),
-        newDayWeekday || null,
-        newDayGoal || null,
-      )
+      await createDay(routine.id, days.length + 1, newDayName.trim(), null, null)
       await refresh()
       setNewDayName('')
-      setNewDayWeekday('')
-      setNewDayGoal('')
     } catch (err) {
       console.error(err)
     } finally {
@@ -71,7 +58,7 @@ export default function RoutineDetail() {
 
   async function handleUpdateDay(
     day: RoutineDay,
-    patch: Partial<Pick<RoutineDay, 'name' | 'weekday' | 'goal'>>,
+    patch: Partial<Pick<RoutineDay, 'name'>>,
   ) {
     await updateDay(day.id, patch)
     await refresh()
@@ -172,32 +159,6 @@ export default function RoutineDetail() {
             Agregar día
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <select
-            value={newDayWeekday}
-            onChange={(e) => setNewDayWeekday(e.target.value)}
-            className="rounded-lg border border-edge bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500"
-          >
-            <option value="">Sin día fijo</option>
-            {WEEKDAYS.map((w) => (
-              <option key={w} value={w}>
-                {w.charAt(0).toUpperCase() + w.slice(1)}
-              </option>
-            ))}
-          </select>
-          <select
-            value={newDayGoal}
-            onChange={(e) => setNewDayGoal(e.target.value)}
-            className="rounded-lg border border-edge bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500"
-          >
-            <option value="">Sin grupo muscular</option>
-            {groups.map((g) => (
-              <option key={g} value={g}>
-                {g.charAt(0).toUpperCase() + g.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
       </form>
 
       <div className="mt-6 space-y-6">
@@ -210,10 +171,8 @@ export default function RoutineDetail() {
           <DayCard
             key={day.id}
             day={day}
-            groups={groups}
             onUpdateDay={(patch) => handleUpdateDay(day, patch)}
             onDelete={() => handleDeleteDay(day)}
-            onAddExercise={(d, ex) => handleAddExercise(d, ex)}
             onRemoveExercise={async (re) => {
               await removeRoutineExercise(re.id)
               await refresh()
