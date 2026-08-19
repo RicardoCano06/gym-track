@@ -32,7 +32,7 @@ export default function SyncStatus() {
 
   return (
     <span
-      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+      className={`glass rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
         !online
           ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
           : paused && pending > 0

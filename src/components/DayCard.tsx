@@ -47,7 +47,7 @@ export default function DayCard({
   const exCount = day.exercises?.length ?? 0
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-edge bg-surface">
+    <section className="glass-card card-hairline relative overflow-hidden rounded-2xl">
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -156,7 +156,7 @@ export default function DayCard({
         {exCount > 0 && (
           <Link
             to={`/entrenar/${day.id}`}
-            className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
+            className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_28px_rgba(16,185,129,0.5)] active:scale-[0.98]"
           >
             Iniciar Entrenamiento
           </Link>

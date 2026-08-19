@@ -160,7 +160,7 @@ export default function Profile() {
     return (
       <div className="grid gap-4 md:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-40 animate-pulse rounded-xl border border-edge bg-surface" />
+          <div key={i} className="shimmer h-40 rounded-2xl border border-edge bg-surface" />
         ))}
       </div>
     )
@@ -177,7 +177,7 @@ export default function Profile() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
-          <section className="rounded-xl border border-edge bg-surface p-5">
+          <section className="card-hairline glass-card rounded-2xl p-5">
             <h2 className="mb-4 font-semibold">Datos del perfil</h2>
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -192,7 +192,7 @@ export default function Profile() {
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
                     placeholder="175"
-                    className="w-full rounded-lg border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-dim3 focus:border-emerald-500"
+                    className="w-full rounded-xl border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
                 <div>
@@ -205,7 +205,7 @@ export default function Profile() {
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
                     placeholder="28"
-                    className="w-full rounded-lg border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-dim3 focus:border-emerald-500"
+                    className="w-full rounded-xl border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
               </div>
@@ -275,7 +275,7 @@ export default function Profile() {
             </form>
           </section>
 
-          <section className="rounded-xl border border-edge bg-surface p-5">
+          <section className="card-hairline glass-card rounded-2xl p-5">
             <h2 className="mb-1 font-semibold">Registrar peso</h2>
             <p className="mb-4 text-sm text-dim">
               Registrá tu peso hoy para calcular tu IMC y seguir tu evolución
@@ -293,7 +293,7 @@ export default function Profile() {
                   onChange={(e) => setWeight(e.target.value)}
                   placeholder="80.5"
                   required
-                  className="w-full rounded-lg border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-dim3 focus:border-emerald-500"
+                  className="w-full rounded-xl border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
               <div>
@@ -303,7 +303,7 @@ export default function Profile() {
                   value={weightNotes}
                   onChange={(e) => setWeightNotes(e.target.value)}
                   placeholder="Ej: pesado por la mañana"
-                  className="w-full rounded-lg border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-dim3 focus:border-emerald-500"
+                  className="w-full rounded-xl border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
@@ -325,12 +325,12 @@ export default function Profile() {
         </div>
 
         <div className="space-y-4">
-          <section className="rounded-xl border border-edge bg-surface p-5">
+          <section className="card-hairline glass-card rounded-2xl p-5">
             <h2 className="mb-4 font-semibold">Tu IMC</h2>
             {bmi ? (
               <>
                 <div className="flex items-end gap-3">
-                  <span className="text-4xl font-bold tracking-tight">
+                  <span className="font-mono text-4xl font-bold tracking-tight tabular-nums">
                     {bmi.bmi.toFixed(1)}
                   </span>
                   <span
@@ -352,7 +352,7 @@ export default function Profile() {
             )}
           </section>
 
-          <section className="rounded-xl border border-edge bg-surface p-5">
+          <section className="card-hairline glass-card rounded-2xl p-5">
             <h2 className="mb-3 font-semibold">{recommendations.title}</h2>
             <ul className="space-y-2.5">
               {recommendations.items.map((item, i) => (
@@ -364,7 +364,7 @@ export default function Profile() {
             </ul>
           </section>
 
-          <section className="rounded-xl border border-edge bg-surface p-5">
+          <section className="card-hairline glass-card rounded-2xl p-5">
             <h2 className="mb-4 font-semibold">Historial de peso</h2>
             {metrics.length === 0 ? (
               <p className="text-sm text-dim">
@@ -377,7 +377,7 @@ export default function Profile() {
                   {metrics.slice(0, 14).map((m) => (
                     <div key={m.id} className="flex items-center justify-between py-2 text-sm">
                       <span className="text-dim">{formatDate(m.date)}</span>
-                      <span className="font-medium">{m.weight_kg} kg</span>
+                      <span className="font-mono font-medium tabular-nums">{m.weight_kg} kg</span>
                     </div>
                   ))}
                 </div>
@@ -390,7 +390,7 @@ export default function Profile() {
       <div className="mt-8 border-t border-edge pt-6">
         <button
           onClick={() => supabase.auth.signOut()}
-          className="min-h-12 w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20 md:hidden"
+          className="min-h-12 w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20 active:scale-[0.99] md:hidden"
         >
           Cerrar sesión
         </button>

@@ -166,14 +166,11 @@ export default function Catalog() {
       ) : loading ? (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="animate-pulse rounded-xl border border-edge bg-surface"
-            >
-              <div className="aspect-square bg-surface2" />
+            <div key={i} className="overflow-hidden rounded-2xl border border-edge bg-surface">
+              <div className="shimmer aspect-square bg-surface2" />
               <div className="space-y-2 p-3">
-                <div className="h-3 w-3/4 rounded bg-surface2" />
-                <div className="h-2.5 w-1/2 rounded bg-surface2" />
+                <div className="shimmer h-3 w-3/4 rounded bg-surface2" />
+                <div className="shimmer h-2.5 w-1/2 rounded bg-surface2" />
               </div>
             </div>
           ))}

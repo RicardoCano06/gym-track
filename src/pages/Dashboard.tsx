@@ -14,6 +14,57 @@ import type { Session } from '@/lib/types'
 const TARGET_SETS = 10
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`card-hairline glass-card rounded-2xl ${className}`}>{children}</div>
+  )
+}
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return (
+    <div className={`shimmer relative overflow-hidden rounded-2xl border border-edge bg-surface ${className}`} />
+  )
+}
+
+function Icon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="h-5 w-5"
+    >
+      {children}
+    </svg>
+  )
+}
+
+const CheckIcon = (
+  <Icon>
+    <path d="M20 6 9 17l-5-5" />
+  </Icon>
+)
+const DumbbellIcon = (
+  <Icon>
+    <path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11" />
+  </Icon>
+)
+const TargetIcon = (
+  <Icon>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="4" />
+  </Icon>
+)
+const PlayIcon = (
+  <Icon>
+    <path d="M6 4v16l14-8z" />
+  </Icon>
+)
+
 export default function Dashboard() {
   const { user } = useAuth()
   const [volume, setVolume] = useState<MuscleVolume[]>([])
@@ -117,7 +168,7 @@ export default function Dashboard() {
           {lastWeight && (
             <Link
               to="/perfil"
-              className="rounded-full border border-edge bg-surface px-3 py-1 text-xs text-soft transition-colors hover:border-emerald-500/50 hover:text-emerald-400"
+              className="rounded-full border border-edge bg-surface px-3 py-1 text-xs text-soft transition-all duration-200 hover:border-emerald-500/50 hover:text-emerald-400"
             >
               Último peso: {lastWeight.weight} kg
               {lastWeight.date === todayStr ? ' (hoy)' : ''}
@@ -128,53 +179,58 @@ export default function Dashboard() {
 
       {loading ? (
         <div className="space-y-4">
-          <div className="h-28 animate-pulse rounded-xl border border-edge bg-surface" />
+          <Skeleton className="h-28" />
           <div className="grid gap-4 sm:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-xl border border-edge bg-surface" />
+              <Skeleton key={i} className="h-28" />
             ))}
           </div>
-          <div className="h-72 animate-pulse rounded-xl border border-edge bg-surface" />
+          <Skeleton className="h-72" />
         </div>
       ) : (
         <div className="space-y-4">
           {nextDayId ? (
-            <div className="rounded-xl bg-emerald-500 p-5 text-neutral-950">
-              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-900/80">
+            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/40 bg-gradient-to-b from-emerald-500/20 via-surface/60 to-surface/30 p-5 shadow-[0_0_36px_rgba(16,185,129,0.16)]">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl"
+              />
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
                 {activeSession ? 'Sesión en curso' : 'Sugerencia para hoy'}
               </p>
-              <h2 className="mt-1 text-xl font-bold">
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-high">
                 {activeSession
                   ? next?.dayId === activeSession.day_id
                     ? next.dayName
                     : 'Retomá donde lo dejaste'
                   : next?.dayName}
               </h2>
-              <p className="mt-1 text-sm text-neutral-900/80">
+              <p className="mt-1 text-sm text-dim">
                 {activeSession
                   ? 'Hay una sesión activa sin finalizar'
                   : `${next?.routineName} · ${lastTrainedLabel(next?.lastTrainedAt ?? null)}`}
               </p>
               <Link
                 to={`/entrenar/${nextDayId}`}
-                className="mt-4 inline-block rounded-lg bg-white/90 px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-white"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_32px_rgba(16,185,129,0.55)] active:scale-[0.98]"
               >
-                {activeSession ? 'Retomar ▶' : 'Entrenar ▶'}
+                {PlayIcon}
+                {activeSession ? 'Retomar' : 'Entrenar'}
               </Link>
             </div>
           ) : (
-            <div className="rounded-xl border border-edge bg-surface p-5">
+            <Card className="p-5">
               <h2 className="font-semibold">Sin sesiones sugeridas</h2>
               <p className="mt-1 text-sm text-dim">
                 Creá una rutina con días de entrenamiento para empezar
               </p>
               <Link
                 to="/rutinas"
-                className="mt-4 inline-block rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 active:scale-[0.98]"
               >
                 Ir a mis rutinas
               </Link>
-            </div>
+            </Card>
           )}
 
           {sessionsCount === 0 ? (
@@ -191,16 +247,18 @@ export default function Dashboard() {
                   label="Sesiones completadas"
                   value={sessionsCount}
                   delta={sessionsCount - prevSessionsCount}
+                  icon={CheckIcon}
                 />
                 <StatCard
                   label="Series totales"
                   value={totalSets}
                   delta={totalSets - prevTotalSets}
+                  icon={DumbbellIcon}
                 />
-                <StatCard label="Grupos trabajados" value={volume.length} />
+                <StatCard label="Grupos trabajados" value={volume.length} icon={TargetIcon} />
               </div>
 
-              <section className="rounded-xl border border-edge bg-surface p-5">
+              <Card className="p-5">
                 <h2 className="font-semibold">Series por grupo muscular</h2>
                 <p className="mb-4 mt-1 text-xs text-dim2">
                   Objetivo mínimo recomendado: {TARGET_SETS} series semanales por grupo para hipertrofia
@@ -217,18 +275,28 @@ export default function Dashboard() {
                       return (
                         <li key={m.group_name}>
                           <div className="mb-1 flex items-baseline justify-between text-sm">
-                            <span className="font-medium capitalize">{m.group_name}</span>
-                            <span className={reached ? 'text-emerald-400' : 'text-amber-400'}>
+                            <span className="font-medium capitalize text-high">{m.group_name}</span>
+                            <span
+                              className={`font-mono tabular-nums ${
+                                reached ? 'text-emerald-400' : 'text-amber-400'
+                              }`}
+                            >
                               {m.sets}/{TARGET_SETS} series
                               {!reached && m.sets < TARGET_SETS
                                 ? ` · faltan ${TARGET_SETS - m.sets}`
                                 : ''}
                             </span>
                           </div>
-                          <div className="h-2.5 overflow-hidden rounded-full bg-surface2">
+                          <div
+                            className={`h-2.5 overflow-hidden rounded-full bg-surface2/80 ring-1 ring-inset ring-edge transition-shadow duration-300 ${
+                              reached ? 'shadow-[0_0_16px_rgba(16,185,129,0.35)]' : ''
+                            }`}
+                          >
                             <div
-                              className={`h-full rounded-full transition-all ${
-                                reached ? 'bg-emerald-500' : 'bg-amber-500'
+                              className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                reached
+                                  ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-400'
+                                  : 'bg-gradient-to-r from-amber-600 to-amber-400'
                               }`}
                               style={{ width: `${pct}%` }}
                             />
@@ -238,7 +306,7 @@ export default function Dashboard() {
                     })}
                   </ul>
                 )}
-              </section>
+              </Card>
             </>
           )}
         </div>
@@ -247,11 +315,28 @@ export default function Dashboard() {
   )
 }
 
-function StatCard({ label, value, delta }: { label: string; value: number; delta?: number }) {
+function StatCard({
+  label,
+  value,
+  delta,
+  icon,
+}: {
+  label: string
+  value: number
+  delta?: number
+  icon: React.ReactNode
+}) {
   return (
-    <div className="rounded-xl border border-edge bg-surface p-5">
-      <p className="text-3xl font-bold tracking-tight">{value}</p>
-      <p className="mt-1 text-sm text-dim">{label}</p>
+    <div className="card-hairline glass-card rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/40">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-3xl font-bold tracking-tight tabular-nums">{value}</p>
+          <p className="mt-1 text-sm text-dim">{label}</p>
+        </div>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+          {icon}
+        </span>
+      </div>
       {delta !== undefined && delta !== 0 && (
         <p
           className={`mt-1 text-xs font-medium ${

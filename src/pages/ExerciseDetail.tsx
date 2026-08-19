@@ -47,11 +47,11 @@ export default function ExerciseDetail() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-4 w-24 rounded bg-surface2" />
-        <div className="aspect-video rounded-xl bg-surface2" />
-        <div className="h-8 w-2/3 rounded bg-surface2" />
-        <div className="h-4 w-1/3 rounded bg-surface2" />
+      <div className="space-y-4">
+        <div className="shimmer h-4 w-24 rounded bg-surface2" />
+        <div className="shimmer aspect-video rounded-2xl bg-surface2" />
+        <div className="shimmer h-8 w-2/3 rounded bg-surface2" />
+        <div className="shimmer h-4 w-1/3 rounded bg-surface2" />
       </div>
     )
   }
@@ -113,7 +113,7 @@ export default function ExerciseDetail() {
         <img
           src={exercise.image_url}
           alt={exercise.name}
-          className="aspect-video w-full rounded-xl border border-edge object-cover"
+          className="aspect-video w-full rounded-2xl border border-edge object-cover shadow-[0_20px_50px_-24px_rgba(0,0,0,0.8)]"
         />
       )}
 
@@ -190,7 +190,7 @@ export default function ExerciseDetail() {
       )}
 
       {progress && (
-        <section className="mt-8 rounded-xl border border-edge bg-surface p-5">
+        <section className="card-hairline glass-card mt-8 rounded-2xl p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-dim">
             Tu progreso
           </h2>
@@ -233,8 +233,8 @@ export default function ExerciseDetail() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-edge bg-bg/50 p-3">
-      <p className="text-lg font-bold tracking-tight">{value}</p>
+    <div className="rounded-xl border border-edge bg-bg/50 p-3">
+      <p className="font-mono text-lg font-bold tracking-tight tabular-nums">{value}</p>
       <p className="mt-0.5 text-xs text-dim2">{label}</p>
     </div>
   )

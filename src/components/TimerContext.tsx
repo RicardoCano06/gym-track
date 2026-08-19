@@ -11,6 +11,7 @@ import type { ReactNode } from 'react'
 interface RestTimerValue {
   running: boolean
   remaining: number
+  total: number
   start: (seconds: number) => void
   extend: () => void
   stop: () => void
@@ -50,6 +51,7 @@ function alertExpired() {
 export function RestTimerProvider({ children }: { children: ReactNode }) {
   const [running, setRunning] = useState(false)
   const [remaining, setRemaining] = useState(0)
+  const [total, setTotal] = useState(0)
   const endAtRef = useRef(0)
   const rafRef = useRef(0)
 
@@ -59,11 +61,13 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   const start = useCallback((seconds: number) => {
     endAtRef.current = Date.now() + seconds * 1000
     setRemaining(seconds)
+    setTotal(seconds)
     setRunning(true)
   }, [])
 
   const extend = useCallback(() => {
     endAtRef.current += 30000
+    setTotal((t) => t + 30)
     setRemaining(computeRemaining())
   }, [])
 
@@ -71,6 +75,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     cancelAnimationFrame(rafRef.current)
     setRunning(false)
     setRemaining(0)
+    setTotal(0)
   }, [])
 
   useEffect(() => {
@@ -104,7 +109,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [running])
 
-  const value: RestTimerValue = { running, remaining, start, extend, stop }
+  const value: RestTimerValue = { running, remaining, total, start, extend, stop }
 
   return (
     <RestTimerContext.Provider value={value}>{children}</RestTimerContext.Provider>

@@ -37,7 +37,7 @@ export function Dialog({
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-sm rounded-t-2xl border border-edge bg-surface p-5 sm:rounded-2xl"
+        className="glass-strong card-hairline w-full max-w-sm animate-rise rounded-t-2xl p-5 sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold">{title}</h2>
@@ -46,15 +46,17 @@ export function Dialog({
           <button
             onClick={onCancel}
             disabled={busy}
-            className="min-h-12 rounded-lg border border-edge2 bg-surface2 px-4 py-3 text-sm font-medium text-soft transition-colors hover:text-strong disabled:opacity-50"
+            className="min-h-12 rounded-xl border border-edge2 bg-surface2 px-4 py-3 text-sm font-medium text-soft transition-all duration-200 hover:text-strong disabled:opacity-50 active:scale-[0.98]"
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
             disabled={busy}
-            className={`min-h-12 rounded-lg px-4 py-3 text-sm font-semibold text-neutral-950 transition-colors disabled:opacity-50 ${
-              danger ? 'bg-red-500 hover:bg-red-400' : 'bg-emerald-500 hover:bg-emerald-400'
+            className={`min-h-12 rounded-xl px-4 py-3 text-sm font-semibold text-neutral-950 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 ${
+              danger
+                ? 'bg-red-500 shadow-[0_4px_20px_rgba(244,63,94,0.35)] hover:bg-red-400'
+                : 'bg-emerald-500 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:bg-emerald-400'
             }`}
           >
             {busy ? 'Un momento...' : confirmLabel}

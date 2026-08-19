@@ -73,12 +73,12 @@ export default function Routines() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="Nombre de la rutina (ej: Volumen 5 días)"
-          className="flex-1 rounded-lg border border-edge bg-surface px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-dim2 focus:border-emerald-500"
+          className="flex-1 rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
         />
         <button
           type="submit"
           disabled={creating || !newName.trim()}
-          className="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
         >
           Crear
         </button>
@@ -87,7 +87,7 @@ export default function Routines() {
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl border border-edge bg-surface" />
+            <div key={i} className="shimmer h-28 rounded-2xl border border-edge bg-surface" />
           ))}
         </div>
       ) : routines.length === 0 ? (
@@ -103,7 +103,7 @@ export default function Routines() {
           {routines.map((routine) => (
             <div
               key={routine.id}
-              className="group relative rounded-xl border border-edge bg-surface p-5 transition-colors hover:border-emerald-500/50"
+              className="group card-hairline glass-card relative rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/50"
             >
               <Link to={`/rutinas/${routine.id}`} className="block">
                 <h2 className="font-semibold">{routine.name}</h2>

@@ -129,7 +129,7 @@ export default function History() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="rounded-lg border border-edge bg-surface px-4 py-2 text-sm font-medium text-dim transition-colors hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-50"
+              className="rounded-lg border border-edge bg-surface px-4 py-2 text-sm font-medium text-dim transition-all duration-200 hover:border-emerald-500 hover:text-emerald-400 active:scale-[0.98] disabled:opacity-50"
             >
               {exporting ? 'Generando...' : '⬇ Exportar CSV'}
             </button>
@@ -142,7 +142,7 @@ export default function History() {
       ) : loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl border border-edge bg-surface" />
+            <div key={i} className="shimmer h-20 rounded-2xl border border-edge bg-surface" />
           ))}
         </div>
       ) : sessions.length === 0 ? (
@@ -198,8 +198,8 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
     : '—'
 
   return (
-    <div className="overflow-hidden rounded-xl border border-edge bg-surface">
-      <button onClick={toggle} className="flex w-full items-center gap-4 px-4 py-3.5 text-left">
+    <div className="glass-card card-hairline overflow-hidden rounded-2xl">
+      <button onClick={toggle} className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-surface2/40">
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">
             {dayName}
@@ -259,7 +259,7 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
                           key={s.id}
                           className={`rounded-md px-2 py-1 font-mono text-xs tabular-nums ${
                             s.completed
-                              ? 'bg-emerald-500/10 text-emerald-400'
+                              ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20'
                               : 'bg-surface2 text-dim2 line-through'
                           }`}
                         >

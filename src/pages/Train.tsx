@@ -311,11 +311,11 @@ export default function Train() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-8 w-1/2 rounded bg-surface2" />
-        <div className="h-6 w-40 rounded bg-surface2" />
-        <div className="h-48 rounded-xl bg-surface2" />
-        <div className="h-48 rounded-xl bg-surface2" />
+      <div className="space-y-4">
+        <div className="shimmer h-8 w-1/2 rounded-lg bg-surface2" />
+        <div className="shimmer h-6 w-40 rounded-lg bg-surface2" />
+        <div className="shimmer h-48 rounded-2xl bg-surface2" />
+        <div className="shimmer h-48 rounded-2xl bg-surface2" />
       </div>
     )
   }
@@ -381,11 +381,11 @@ export default function Train() {
                 onConfirm: handleDiscard,
               })
             }
-            className="min-h-11 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+            className="min-h-11 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 transition-all duration-200 hover:bg-red-500/10 active:scale-95"
           >
             Descartar
           </button>
-          <span className="rounded-full border border-edge bg-surface px-3 py-1.5 font-mono text-sm font-bold tabular-nums text-emerald-400">
+          <span className="rounded-full border border-edge bg-surface px-3 py-1.5 font-mono text-sm font-bold tabular-nums text-emerald-400 shadow-[0_0_14px_rgba(16,185,129,0.15)]">
             ⏱ {Math.floor(elapsedMinutes / 60)}h {elapsedMinutes % 60}m
           </span>
         </div>
@@ -403,7 +403,7 @@ export default function Train() {
             return (
               <div
                 key={`ss-${re.superset_group}`}
-                className="overflow-hidden rounded-xl border border-edge bg-surface"
+                className="glass-card card-hairline overflow-hidden rounded-2xl"
               >
                 <div className="flex items-center justify-between border-b border-edge bg-surface2/60 px-4 py-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-dim2">
@@ -460,20 +460,20 @@ export default function Train() {
         <div className="mt-8 flex justify-center">
           <button
             onClick={() => setShowFinish(true)}
-            className="rounded-xl bg-emerald-500 px-8 py-3 font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
+            className="rounded-2xl bg-emerald-500 px-8 py-3.5 font-semibold text-neutral-950 shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_36px_rgba(16,185,129,0.5)] active:scale-[0.98]"
           >
             {allDone ? '🏁 Terminar entrenamiento' : 'Finalizar entrenamiento'}
           </button>
         </div>
       ) : (
-        <div className="mt-8 rounded-xl border border-edge bg-surface p-5 text-center">
+        <div className="glass-card card-hairline mt-8 rounded-2xl p-5 text-center">
           <p className="font-semibold">¿Cómo te sentiste hoy?</p>
           <div className="mt-4 flex justify-center gap-2">
             {FEELINGS.map((f) => (
               <button
                 key={f.value}
                 onClick={() => handleFinish(f.value)}
-                className="flex flex-col items-center gap-1 rounded-lg border border-edge bg-bg px-4 py-3 transition-colors hover:border-emerald-500"
+                className="flex flex-col items-center gap-1 rounded-xl border border-edge bg-bg px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] active:scale-95"
                 title={f.text}
               >
                 <span className="text-2xl">{f.label}</span>
@@ -557,22 +557,28 @@ function ExerciseBlock({
   const doneCount = rows.filter((s) => s.completed).length
   return (
     <section
-      className={`overflow-hidden ${bare ? 'bg-bg' : 'rounded-xl border border-edge bg-surface'}`}
+      className={`overflow-hidden transition-shadow duration-300 ${
+        bare ? 'bg-bg' : 'glass-card card-hairline rounded-2xl'
+      }`}
     >
       <div className="flex items-center gap-3 border-b border-edge px-4 py-3">
         {exercise?.image_url && (
-          <img src={exercise.image_url} alt="" className="h-10 w-10 rounded-lg object-cover" />
+          <img
+            src={exercise.image_url}
+            alt=""
+            className="h-11 w-11 rounded-xl object-cover ring-1 ring-inset ring-edge"
+          />
         )}
         <div className="min-w-0 flex-1">
           <Link
             to={`/ejercicios/${exercise?.id}`}
-            className="block truncate font-semibold hover:text-emerald-400"
+            className="block truncate font-semibold text-high transition-colors hover:text-emerald-400"
           >
             {exercise?.name ?? 'Ejercicio'}
           </Link>
           <p className="text-xs text-dim2">Plan: {re.sets} × {re.reps ?? '?'}</p>
         </div>
-        <span className="text-xs font-medium text-dim">
+        <span className="rounded-full bg-surface2/80 px-2.5 py-1 font-mono text-xs font-semibold tabular-nums text-dim">
           {doneCount}/{rows.length}
         </span>
       </div>
@@ -627,122 +633,145 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
   }
 
   const btn =
-    'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-edge2 bg-surface2 text-sm font-semibold text-soft transition-colors active:bg-emerald-500/20 active:text-emerald-400'
+    'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-edge2 bg-surface2 text-sm font-semibold text-soft transition-all duration-150 active:scale-90 hover:border-emerald-500/50 hover:text-emerald-400'
+
+  const field =
+    'h-14 w-20 rounded-xl border border-edge bg-bg px-1 text-center font-mono text-lg font-semibold tabular-nums outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
 
   return (
     <li
       ref={rowRef}
-      className={`flex items-start gap-2 px-2 py-2 transition-all ${
-        active ? 'ring-2 ring-inset ring-emerald-500/60 scale-[1.01] bg-emerald-500/5' : ''
-      } ${saving ? 'ring-1 ring-inset ring-emerald-500/40' : ''} ${done ? 'opacity-50' : ''}`}
+      className={`flex items-start gap-2 px-2 py-2 transition-all duration-200 ${
+        active
+          ? 'scale-[1.01] bg-emerald-500/5 ring-2 ring-inset ring-emerald-500/60 shadow-[0_0_24px_rgba(16,185,129,0.12)]'
+          : ''
+      } ${saving ? 'ring-1 ring-inset ring-emerald-500/40' : ''} ${
+        done ? 'opacity-60' : ''
+      }`}
     >
       <button
         onClick={() => {
           onUpdate({ completed: !done })
           if (!done) navigator.vibrate?.(30)
         }}
-        className={`flex h-14 w-11 shrink-0 items-center justify-center rounded-lg border text-sm font-bold transition-colors ${
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 text-sm font-bold transition-all duration-200 active:scale-95 ${
           done
-            ? 'border-emerald-500 bg-emerald-500 text-neutral-950'
-            : 'border-edge2 bg-bg text-dim2 active:border-emerald-500 active:text-emerald-400'
+            ? 'border-emerald-500 bg-gradient-to-b from-emerald-500 to-emerald-600 text-neutral-950 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+            : 'border-edge2 bg-bg text-dim2 hover:border-emerald-500/60 hover:bg-emerald-500/5 hover:text-emerald-400'
         }`}
         title={done ? 'Desmarcar serie' : 'Marcar serie completada'}
       >
-        {done ? '✓' : set.set_number}
+        {done ? (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6 animate-pop"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : (
+          <span className="font-mono tabular-nums">{set.set_number}</span>
+        )}
       </button>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="flex items-center gap-1">
-              <span className="w-8 text-xs text-dim2">Peso</span>
-              <button onClick={() => stepWeight(-1)} className={btn} title="Bajar peso">
-                −
-              </button>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step={0.5}
-                value={set.weight_kg ?? ''}
-                onChange={(e) =>
-                  onUpdate({ weight_kg: e.target.value === '' ? null : Number(e.target.value) })
-                }
-                onBlur={onCommit}
-                placeholder="Peso"
-                className="h-11 w-14 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
-              />
-              <button onClick={() => stepWeight(1)} className={btn} title="Subir peso">
-                +
-              </button>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-8 text-xs text-dim2">Reps</span>
-              <button onClick={() => stepReps(-1)} className={btn} title="Bajar reps">
-                −
-              </button>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={set.reps ?? ''}
-                onChange={(e) =>
-                  onUpdate({ reps: e.target.value === '' ? null : Number(e.target.value) })
-                }
-                onBlur={onCommit}
-                placeholder="Reps"
-                className="h-11 w-12 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
-              />
-              <button onClick={() => stepReps(1)} className={btn} title="Subir reps">
-                +
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-2 flex items-center gap-2">
-<select
-              value={set.rpe === null ? '' : String(set.rpe)}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="flex items-center gap-1">
+            <span className="w-8 text-xs text-dim2">Peso</span>
+            <button onClick={() => stepWeight(-1)} className={btn} title="Bajar peso">
+              −
+            </button>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.5}
+              value={set.weight_kg ?? ''}
               onChange={(e) =>
-                onUpdate({ rpe: e.target.value === '' ? null : Number(e.target.value) })
+                onUpdate({ weight_kg: e.target.value === '' ? null : Number(e.target.value) })
               }
               onBlur={onCommit}
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-edge bg-bg px-2 text-xs outline-none focus:border-emerald-500"
-              title="RPE (esfuerzo percibido 5-10)"
-            >
-              {RPE_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o === '' ? 'RPE' : `RPE ${o}`}
-                </option>
-              ))}
-            </select>
-            {saved && <span className="text-xs text-emerald-400">✓</span>}
-            <button
-              onClick={onNote}
-              className={`flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-lg transition-colors ${
-                set.notes
-                  ? 'text-emerald-400'
-                  : 'text-dim2 hover:bg-surface2 hover:text-soft'
-              }`}
-              title={set.notes ? 'Editar nota' : 'Agregar nota'}
-            >
-              ⋯
+              placeholder="Peso"
+              className={field}
+            />
+            <button onClick={() => stepWeight(1)} className={btn} title="Subir peso">
+              +
             </button>
-            <button
-              onClick={() =>
-                ask({
-                  title: 'Eliminar serie',
-                  message: `¿Eliminar la serie ${set.set_number}? Se borra también del historial.`,
-                  confirmLabel: 'Eliminar',
-                  danger: true,
-                  onConfirm: onDelete,
-                })
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-8 text-xs text-dim2">Reps</span>
+            <button onClick={() => stepReps(-1)} className={btn} title="Bajar reps">
+              −
+            </button>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={set.reps ?? ''}
+              onChange={(e) =>
+                onUpdate({ reps: e.target.value === '' ? null : Number(e.target.value) })
               }
-              className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400"
-              title="Eliminar serie"
-            >
-              ✕
+              onBlur={onCommit}
+              placeholder="Reps"
+              className={field}
+            />
+            <button onClick={() => stepReps(1)} className={btn} title="Subir reps">
+              +
             </button>
           </div>
         </div>
+
+        <div className="mt-2 flex items-center gap-2">
+          <select
+            value={set.rpe === null ? '' : String(set.rpe)}
+            onChange={(e) =>
+              onUpdate({ rpe: e.target.value === '' ? null : Number(e.target.value) })
+            }
+            onBlur={onCommit}
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-edge bg-bg px-2 text-xs outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+            title="RPE (esfuerzo percibido 5-10)"
+          >
+            {RPE_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o === '' ? 'RPE' : `RPE ${o}`}
+              </option>
+            ))}
+          </select>
+          {saved && (
+            <span className="animate-pop text-xs text-emerald-400">✓</span>
+          )}
+          <button
+            onClick={onNote}
+            className={`flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-lg transition-all duration-200 active:scale-90 ${
+              set.notes
+                ? 'text-emerald-400'
+                : 'text-dim2 hover:bg-surface2 hover:text-soft'
+            }`}
+            title={set.notes ? 'Editar nota' : 'Agregar nota'}
+          >
+            ⋯
+          </button>
+          <button
+            onClick={() =>
+              ask({
+                title: 'Eliminar serie',
+                message: `¿Eliminar la serie ${set.set_number}? Se borra también del historial.`,
+                confirmLabel: 'Eliminar',
+                danger: true,
+                onConfirm: onDelete,
+              })
+            }
+            className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-dim2 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 active:scale-90"
+            title="Eliminar serie"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
       {dialog}
     </li>
   )

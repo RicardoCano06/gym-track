@@ -138,10 +138,10 @@ export default function RoutineDetail() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-4 w-24 rounded bg-surface2" />
-        <div className="h-8 w-1/2 rounded bg-surface2" />
-        <div className="h-40 rounded-xl bg-surface2" />
+      <div className="space-y-4">
+        <div className="shimmer h-4 w-24 rounded bg-surface2" />
+        <div className="shimmer h-8 w-1/2 rounded bg-surface2" />
+        <div className="shimmer h-40 rounded-2xl bg-surface2" />
       </div>
     )
   }
@@ -180,12 +180,12 @@ export default function RoutineDetail() {
             value={newDayName}
             onChange={(e) => setNewDayName(e.target.value)}
             placeholder="Nombre del día (ej: Push, Pull, Pierna...)"
-            className="flex-1 rounded-lg border border-edge bg-surface px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-dim2 focus:border-emerald-500"
+            className="flex-1 rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
           />
           <button
             type="submit"
             disabled={saving || !newDayName.trim()}
-            className="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400 disabled:opacity-50"
+            className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50"
           >
             Agregar día
           </button>

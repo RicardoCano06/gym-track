@@ -45,27 +45,37 @@ export default function Login() {
     }
   }
 
+  const inputClass =
+    'w-full rounded-xl border border-edge2 bg-bg/70 px-3.5 py-2.5 text-sm text-strong outline-none transition-all duration-200 placeholder:text-dim3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-bg px-4">
-      <div className="mb-8 flex items-center gap-2 text-2xl font-bold">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 font-black text-neutral-950">
+    <div className="radial-top flex min-h-dvh flex-col items-center justify-center bg-bg px-4">
+      <div className="mb-8 flex animate-rise items-center gap-2 text-2xl font-bold">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 font-black text-neutral-950 shadow-[0_0_24px_rgba(16,185,129,0.5)]">
           G
         </span>
         <span>GymTrack</span>
       </div>
 
-      <div className="w-full max-w-sm rounded-2xl border border-edge bg-surface p-6">
-        <div className="mb-6 grid grid-cols-2 rounded-lg bg-surface2 p-1 text-sm font-medium">
+      <div className="glass-strong card-hairline w-full max-w-sm animate-rise rounded-3xl p-6">
+        <div className="relative mb-6 flex rounded-xl bg-surface2/70 p-1 text-sm font-medium">
+          <span
+            aria-hidden
+            className={`absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-lg bg-emerald-500 shadow-[0_4px_16px_rgba(16,185,129,0.35)] transition-transform duration-300 ease-out ${
+              mode === 'register' ? 'translate-x-full' : ''
+            }`}
+          />
           {(['login', 'register'] as const).map((m) => (
             <button
               key={m}
+              type="button"
               onClick={() => {
                 setMode(m)
                 setError(null)
                 setMessage(null)
               }}
-              className={`rounded-md py-2 transition-colors ${
-                mode === m ? 'bg-bg text-strong' : 'text-dim hover:text-high'
+              className={`relative z-10 flex-1 rounded-lg py-2 transition-colors duration-200 ${
+                mode === m ? 'font-semibold text-neutral-950' : 'text-dim hover:text-high'
               }`}
             >
               {m === 'login' ? 'Ingresar' : 'Registrarse'}
@@ -81,7 +91,7 @@ export default function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-dim3 focus:border-emerald-500"
+              className={inputClass}
               placeholder="tu@email.com"
             />
           </div>
@@ -93,7 +103,7 @@ export default function Login() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-dim3 focus:border-emerald-500"
+              className={inputClass}
               placeholder="••••••••"
             />
           </div>
@@ -112,7 +122,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-emerald-500 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400 disabled:opacity-60"
+            className="w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_28px_rgba(16,185,129,0.5)] active:scale-[0.99] disabled:opacity-60 disabled:shadow-none"
           >
             {submitting ? 'Un momento...' : mode === 'login' ? 'Ingresar' : 'Crear cuenta'}
           </button>

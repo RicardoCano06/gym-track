@@ -79,7 +79,7 @@ export default function Stats() {
           Récords personales
         </h2>
         {prs.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-edge bg-surface p-4 text-sm text-dim">
+          <p className="mt-3 rounded-2xl border border-edge bg-surface p-4 text-sm text-dim">
             Todavía no hay récords. Registrá sesiones y vas a ver acá tus mejores
             marcas por ejercicio.
           </p>
@@ -89,26 +89,26 @@ export default function Stats() {
               <li key={pr.exerciseId}>
                 <Link
                   to={`/ejercicios/${pr.exerciseId}`}
-                  className="flex items-center gap-3 rounded-xl border border-edge bg-surface p-3 active:bg-surface2"
+                  className="glass-card card-hairline flex items-center gap-3 rounded-2xl p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/40 active:bg-surface2"
                 >
                   {pr.imageUrl ? (
                     <img
                       src={pr.imageUrl}
                       alt=""
-                      className="h-11 w-11 shrink-0 rounded-lg object-cover"
+                      className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-inset ring-edge"
                       loading="lazy"
                     />
                   ) : (
-                    <span className="h-11 w-11 shrink-0 rounded-lg bg-surface2" />
+                    <span className="h-11 w-11 shrink-0 rounded-xl bg-surface2" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{pr.name}</p>
+                    <p className="truncate text-sm font-medium text-high">{pr.name}</p>
                     <p className="mt-0.5 text-xs text-dim2">
                       Máx {pr.maxWeight} kg · {pr.sessions} sesión{pr.sessions === 1 ? '' : 'es'}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-400">
+                    <p className="font-mono text-sm font-bold tabular-nums text-emerald-400">
                       {pr.maxOneRm!.toFixed(0)} kg
                     </p>
                     <p className="mt-0.5 text-xs text-dim2">1RM est.</p>
@@ -127,8 +127,8 @@ export default function Stats() {
 
 function StreakCard({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="rounded-xl border border-edge bg-surface p-4">
-      <p className="text-3xl font-bold tracking-tight text-emerald-400">
+    <div className="card-hairline glass-card rounded-2xl p-4">
+      <p className="font-mono text-3xl font-bold tracking-tight tabular-nums text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.35)]">
         {value ?? '—'}
       </p>
       <p className="mt-1 text-xs text-dim2">{label}</p>
@@ -174,12 +174,12 @@ function VolumeChart({ volume }: { volume: WeeklyVolumePoint[] }) {
         Volumen semanal
       </h2>
       {groups.length === 0 ? (
-        <p className="mt-3 rounded-xl border border-edge bg-surface p-4 text-sm text-dim">
+        <p className="mt-3 rounded-2xl border border-edge bg-surface p-4 text-sm text-dim">
           Sin series registradas en las últimas 8 semanas.
         </p>
       ) : (
         <>
-          <div className="mt-4 rounded-xl border border-edge bg-surface p-4">
+          <div className="glass-card card-hairline mt-4 rounded-2xl p-4">
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
               {weeks.map((w, i) => {
                 const colW = W / weeks.length
@@ -262,7 +262,7 @@ function ExerciseEvolution({ prs }: { prs: PR[] }) {
             onChange={(e) => {
               setExerciseId(e.target.value)
             }}
-            className="mt-3 min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-sm text-strong"
+            className="mt-3 min-h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm text-strong outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
           >
             <option value="">Elegí un ejercicio…</option>
             {prs.map((p) => (
@@ -275,13 +275,13 @@ function ExerciseEvolution({ prs }: { prs: PR[] }) {
           {loading && <p className="mt-4 text-sm text-dim">Cargando…</p>}
 
           {!loading && series && series.length < 2 && (
-            <p className="mt-4 rounded-xl border border-edge bg-surface p-4 text-sm text-dim">
+            <p className="mt-4 rounded-2xl border border-edge bg-surface p-4 text-sm text-dim">
               Necesitás al menos 2 sesiones con este ejercicio para ver la evolución.
             </p>
           )}
 
           {!loading && series && series.length >= 2 && selected && (
-            <div className="mt-4 rounded-xl border border-edge bg-surface p-4">
+            <div className="glass-card card-hairline mt-4 rounded-2xl p-4">
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <p className="text-lg font-bold tracking-tight">

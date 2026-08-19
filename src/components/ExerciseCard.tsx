@@ -10,7 +10,7 @@ export default function ExerciseCard({ exercise, muscleName }: Props) {
   return (
     <Link
       to={`/ejercicios/${exercise.id}`}
-      className="group overflow-hidden rounded-xl border border-edge bg-surface transition-colors hover:border-emerald-500/50 hover:bg-surface2/60"
+      className="card-hairline glass-card group overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-[0_0_28px_rgba(16,185,129,0.14)]"
     >
       <div className="aspect-square overflow-hidden bg-surface2">
         {exercise.image_url ? (
@@ -25,13 +25,13 @@ export default function ExerciseCard({ exercise, muscleName }: Props) {
         )}
       </div>
       <div className="p-3">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-high">
           {exercise.name}
         </h3>
         {exercise.muscle_primary != null && (
-          <p className="mt-1 text-xs text-dim">
+          <span className="mt-2 inline-block rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400 ring-1 ring-inset ring-emerald-500/25">
             {muscleName(exercise.muscle_primary)}
-          </p>
+          </span>
         )}
       </div>
     </Link>

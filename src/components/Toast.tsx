@@ -10,10 +10,10 @@ interface ToastItem {
   action?: ToastAction
 }
 
-const STYLES: Record<ToastType, string> = {
-  success: 'border-emerald-500/50',
-  error: 'border-red-500/50',
-  info: 'border-edge2',
+const ACCENTS: Record<ToastType, string> = {
+  success: 'text-emerald-400',
+  error: 'text-red-400',
+  info: 'text-sky-400',
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -34,12 +34,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ pushToast }}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-28 z-50 flex flex-col items-center gap-2 px-4 md:bottom-8">
+      <div className="pointer-events-none fixed inset-x-0 bottom-32 z-50 flex flex-col items-center gap-2 px-4 md:bottom-10">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border bg-surface px-4 py-3 text-sm shadow-lg shadow-black/20 ${STYLES[t.type]}`}
+            className="glass-strong pointer-events-auto flex w-full max-w-sm animate-rise items-center gap-3 rounded-2xl px-4 py-3 text-sm shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)]"
           >
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${ACCENTS[t.type]}`}
+            >
+              {t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ℹ'}
+            </span>
             <span className="flex-1">{t.message}</span>
             {t.action && (
               <button
