@@ -9,6 +9,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const CDP_URL = process.env.CDP_URL ?? 'http://localhost:9222'
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173'
 const PORT = String(process.env.E2E_PORT ?? 4173)
+const READY_TIMEOUT = Number(process.env.E2E_READY_TIMEOUT ?? 60000)
 const isWin = process.platform === 'win32'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -22,7 +23,7 @@ async function reachable(url) {
   }
 }
 
-async function waitFor(url, timeoutMs = 30000) {
+async function waitFor(url, timeoutMs = READY_TIMEOUT) {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     if (await reachable(url)) return true
@@ -51,9 +52,10 @@ async function ensurePreview() {
   )
   const ok = await waitFor(BASE_URL)
   if (!ok) {
-    console.error(`el preview no levanto en ${BASE_URL}`)
+    console.error(`el preview no levanto en ${BASE_URL} tras ${READY_TIMEOUT}ms`)
     process.exit(1)
   }
+  await sleep(500)
   return child
 }
 
@@ -90,9 +92,10 @@ async function ensureBrowser() {
   )
   const ok = await waitFor(`${CDP_URL}/json`)
   if (!ok) {
-    console.error('el navegador no expuso el puerto de depuracion')
+    console.error(`el navegador no expuso el puerto de depuracion tras ${READY_TIMEOUT}ms`)
     process.exit(1)
   }
+  await sleep(500)
   return child
 }
 

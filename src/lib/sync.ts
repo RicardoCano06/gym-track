@@ -7,6 +7,7 @@ export interface PendingOp {
   retries: number
   createdAt: string
   availableAt?: number
+  userId: string | null
 }
 
 export function genId(): string {
@@ -36,6 +37,7 @@ let hasLock = false
 let lockOwner = ''
 let lockHeartbeat: number | null = null
 let paused = loadPaused()
+let currentUserId: string | null = null
 
 const listeners = new Set<() => void>()
 const executors = new Map<string, (op: PendingOp) => Promise<void>>()
@@ -201,6 +203,7 @@ export function enqueue(kind: string, payload: Record<string, unknown>) {
     payload,
     retries: 0,
     createdAt: new Date().toISOString(),
+    userId: currentUserId,
   }
   saveQueue([...loadQueue(), op])
   notify()
@@ -219,6 +222,7 @@ export function enqueueDelayed(
     retries: 0,
     createdAt: new Date().toISOString(),
     availableAt: Date.now() + delayMs,
+    userId: currentUserId,
   }
   saveQueue([...loadQueue(), op])
   notify()
@@ -239,7 +243,7 @@ function scheduleFlush(delayMs: number) {
 }
 
 function scheduleFlushAt(at: number) {
-  if (flushing || flushTimer !== null) return
+  if (flushTimer !== null) return
   const delay = Math.max(0, at - Date.now())
   flushTimer = window.setTimeout(() => {
     flushTimer = null
@@ -247,50 +251,81 @@ function scheduleFlushAt(at: number) {
   }, delay)
 }
 
-async function flush() {
-  if (flushing || paused) return
+async function flushInner() {
+  const now = Date.now()
+  let ops = loadQueue()
+  // Aislar operaciones de otra sesion (fuga cross-user): si el user_id no
+  // coincide con la sesion activa se descartan sin ejecutarse. Las operaciones
+  // viejas sin user_id (versiones previas) tambien se descartan por seguridad.
+  const kept = ops.filter((op) => op.userId === currentUserId)
+  if (kept.length !== ops.length) {
+    saveQueue(kept)
+    notify()
+    ops = kept
+  }
+  const due = ops.filter((op) => (op.availableAt ?? 0) <= now)
+  if (due.length === 0) {
+    const future = ops.filter((op) => (op.availableAt ?? 0) > now)
+    if (future.length > 0) {
+      scheduleFlushAt(Math.min(...future.map((op) => op.availableAt ?? 0)))
+    }
+    return
+  }
+  for (const op of due) {
+    // Releer desde localStorage justo antes de ejecutar: si otra pestaña
+    // deshizo (dequeue) la operación, esta ya no está y no debe salir a red.
+    const current = loadQueue()
+    if (!current.some((q) => q.id === op.id)) continue
+    if (op.userId !== currentUserId) continue
+    const executor = executors.get(op.kind)
+    if (!executor) continue
+    try {
+      await executor(op)
+      saveQueue(loadQueue().filter((q) => q.id !== op.id))
+      notify()
+    } catch (err) {
+      if (isAuthError(err)) {
+        setPaused(true)
+        return
+      }
+      op.retries += 1
+      saveQueue(loadQueue().map((q) => (q.id === op.id ? op : q)))
+      notify()
+      scheduleFlush(Math.min(MAX_BACKOFF, 1000 * 2 ** Math.min(op.retries, 4)))
+      return
+    }
+  }
+}
+
+async function flushLocalStorageLocked() {
   if (!acquireLock()) {
     scheduleFlush(200)
     return
   }
+  try {
+    await flushInner()
+  } finally {
+    releaseLock()
+  }
+}
+
+async function flush() {
+  if (flushing || paused) return
   flushing = true
   try {
-    const now = Date.now()
-    const ops = loadQueue()
-    const due = ops.filter((op) => (op.availableAt ?? 0) <= now)
-    if (due.length === 0) {
-      const future = ops.filter((op) => (op.availableAt ?? 0) > now)
-      if (future.length > 0) {
-        scheduleFlushAt(Math.min(...future.map((op) => op.availableAt ?? 0)))
-      }
-      return
-    }
-    for (const op of due) {
-      // Releer desde localStorage justo antes de ejecutar: si otra pestaña
-      // deshizo (dequeue) la operación, esta ya no está y no debe salir a red.
-      const current = loadQueue()
-      if (!current.some((q) => q.id === op.id)) continue
-      const executor = executors.get(op.kind)
-      if (!executor) continue
-      try {
-        await executor(op)
-        saveQueue(loadQueue().filter((q) => q.id !== op.id))
-        notify()
-      } catch (err) {
-        if (isAuthError(err)) {
-          setPaused(true)
-          return
-        }
-        op.retries += 1
-        saveQueue(loadQueue().map((q) => (q.id === op.id ? op : q)))
-        notify()
-        scheduleFlush(Math.min(MAX_BACKOFF, 1000 * 2 ** Math.min(op.retries, 4)))
-        return
-      }
+    if (typeof navigator !== 'undefined' && typeof navigator.locks?.request === 'function') {
+      // Web Locks: exclusion mutua entre pestanas sin depender de timers del
+      // event loop. El lock se mantiene mientras el callback este pendiente
+      // aunque la pestana se congele; se libera al completar o destruirse.
+      await navigator.locks.request('gymtrack-sync', async () => {
+        if (paused) return
+        await flushInner()
+      })
+    } else {
+      await flushLocalStorageLocked()
     }
   } finally {
     flushing = false
-    releaseLock()
     if (!paused && loadQueue().length > 0 && flushTimer === null) scheduleFlush(0)
   }
 }
@@ -306,7 +341,11 @@ if (typeof window !== 'undefined') {
       notify()
     }
   })
+  supabase.auth.getSession().then(({ data }) => {
+    currentUserId = data.session?.user.id ?? null
+  })
   supabase.auth.onAuthStateChange((_event, session) => {
+    currentUserId = session?.user.id ?? null
     setPaused(!session)
   })
   window.addEventListener('online', () => scheduleFlush(0))

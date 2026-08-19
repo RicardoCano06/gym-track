@@ -25,3 +25,4 @@ jobs:
       - run: npm run test:e2e
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          E2E_READY_TIMEOUT: '120000'
