@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 export const URL = 'https://rikbdlgdbxarddfusmwg.supabase.co'
 export const ANON =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpa2JkbGdkYnhhcmRkZnVzbXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNjkyNzQsImV4cCI6MjEwMjY0NTI3NH0.NckJ2_g7sf0arbJ0YV9kOcTlomR9YrU9LVxtFpSdTxE'
-export const BASE_URL = 'http://localhost:4173'
-export const CDP_URL = 'http://localhost:9222'
+export const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173'
+export const CDP_URL = process.env.CDP_URL ?? 'http://localhost:9222'
 export const TEST_EMAIL = 'gymtrack.test.2026@gmail.com'
 export const TEST_PASS = 'test123456'
 

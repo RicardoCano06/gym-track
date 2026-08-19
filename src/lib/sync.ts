@@ -24,13 +24,18 @@ export function genId(): string {
 
 const QUEUE_KEY = 'gymtrack-pending-queue'
 const LOCK_KEY = 'gymtrack-sync-lock'
-const LOCK_TTL = 8000
+const PAUSE_KEY = 'gymtrack-sync-paused'
+const LOCK_TTL = 2500
+const LOCK_HEARTBEAT = 800
 const MAX_BACKOFF = 15000
 
 let queue: PendingOp[] = loadQueue()
 let flushTimer: number | null = null
 let flushing = false
 let hasLock = false
+let lockOwner = ''
+let lockHeartbeat: number | null = null
+let paused = loadPaused()
 
 const listeners = new Set<() => void>()
 const executors = new Map<string, (op: PendingOp) => Promise<void>>()
@@ -52,33 +57,115 @@ function saveQueue(next: PendingOp[]) {
   }
 }
 
+function loadPaused(): boolean {
+  try {
+    return localStorage.getItem(PAUSE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function persistPaused(value: boolean) {
+  try {
+    localStorage.setItem(PAUSE_KEY, value ? '1' : '0')
+  } catch {
+    // sin almacenamiento: la pausa vive solo en memoria
+  }
+}
+
 function acquireLock(): boolean {
   try {
     const now = Date.now()
     const raw = localStorage.getItem(LOCK_KEY)
     if (raw) {
-      const lock = JSON.parse(raw) as { until: number }
+      const lock = JSON.parse(raw) as { owner: string; until: number }
       if (lock.until > now) return false
     }
+    lockOwner = genId()
     const until = now + LOCK_TTL
-    localStorage.setItem(LOCK_KEY, JSON.stringify({ until }))
+    localStorage.setItem(LOCK_KEY, JSON.stringify({ owner: lockOwner, until }))
     const check = JSON.parse(localStorage.getItem(LOCK_KEY) ?? 'null')
-    if (check?.until !== until) return false
+    if (check?.owner !== lockOwner) {
+      lockOwner = ''
+      return false
+    }
     hasLock = true
+    startHeartbeat()
     return true
   } catch {
     return true
   }
 }
 
+function renewLock() {
+  if (!hasLock || !lockOwner) return
+  try {
+    const raw = localStorage.getItem(LOCK_KEY)
+    const lock = raw ? JSON.parse(raw) : null
+    if (lock?.owner !== lockOwner) {
+      hasLock = false
+      lockOwner = ''
+      stopHeartbeat()
+      return
+    }
+    localStorage.setItem(
+      LOCK_KEY,
+      JSON.stringify({ owner: lockOwner, until: Date.now() + LOCK_TTL }),
+    )
+  } catch {
+    // sin almacenamiento: no hay lock que renovar
+  }
+}
+
+function startHeartbeat() {
+  lockHeartbeat = window.setInterval(renewLock, LOCK_HEARTBEAT)
+}
+
+function stopHeartbeat() {
+  if (lockHeartbeat !== null) {
+    clearInterval(lockHeartbeat)
+    lockHeartbeat = null
+  }
+}
+
 function releaseLock() {
-  if (!hasLock) return
+  stopHeartbeat()
+  if (!hasLock || !lockOwner) return
   hasLock = false
   try {
-    localStorage.removeItem(LOCK_KEY)
+    const raw = localStorage.getItem(LOCK_KEY)
+    const lock = raw ? JSON.parse(raw) : null
+    if (lock?.owner === lockOwner) localStorage.removeItem(LOCK_KEY)
   } catch {
     // sin almacenamiento: no hay lock que liberar
   }
+  lockOwner = ''
+}
+
+function setPaused(value: boolean) {
+  if (paused === value) return
+  paused = value
+  persistPaused(value)
+  notify()
+  if (!value) scheduleFlush(0)
+}
+
+function isAuthError(err: unknown): boolean {
+  const e = err as { status?: number; code?: string; message?: string } | null
+  if (!e) return false
+  if (typeof e.status === 'number' && (e.status === 401 || e.status === 403)) return true
+  if (typeof e.code === 'string') {
+    const code = e.code.toUpperCase()
+    if (code === 'PGRST301' || code === 'PGRST302') return true
+    if (
+      code === 'INVALID_CREDENTIALS' ||
+      code === 'UNAUTHENTICATED' ||
+      code === 'PERMISSION_DENIED'
+    ) {
+      return true
+    }
+  }
+  return /jwt|unauthor|forbidden|token.*expired|session.*invalid/i.test(e.message ?? '')
 }
 
 function notify() {
@@ -94,6 +181,10 @@ export function registerExecutor(
 
 export function getPendingCount(): number {
   return queue.length
+}
+
+export function isSyncPaused(): boolean {
+  return paused
 }
 
 export function subscribeSync(listener: () => void): () => void {
@@ -157,7 +248,7 @@ function scheduleFlushAt(at: number) {
 }
 
 async function flush() {
-  if (flushing) return
+  if (flushing || paused) return
   if (!acquireLock()) {
     scheduleFlush(200)
     return
@@ -185,7 +276,11 @@ async function flush() {
         await executor(op)
         saveQueue(loadQueue().filter((q) => q.id !== op.id))
         notify()
-      } catch {
+      } catch (err) {
+        if (isAuthError(err)) {
+          setPaused(true)
+          return
+        }
         op.retries += 1
         saveQueue(loadQueue().map((q) => (q.id === op.id ? op : q)))
         notify()
@@ -196,7 +291,7 @@ async function flush() {
   } finally {
     flushing = false
     releaseLock()
-    if (loadQueue().length > 0 && flushTimer === null) scheduleFlush(0)
+    if (!paused && loadQueue().length > 0 && flushTimer === null) scheduleFlush(0)
   }
 }
 
@@ -206,7 +301,13 @@ if (typeof window !== 'undefined') {
       queue = loadQueue()
       notify()
       scheduleFlush(0)
+    } else if (e.key === PAUSE_KEY) {
+      paused = loadPaused()
+      notify()
     }
+  })
+  supabase.auth.onAuthStateChange((_event, session) => {
+    setPaused(!session)
   })
   window.addEventListener('online', () => scheduleFlush(0))
   document.addEventListener('visibilitychange', () => {

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
-import { getPendingCount, subscribeSync } from '@/lib/sync'
+import { getPendingCount, isSyncPaused, subscribeSync } from '@/lib/sync'
 
 export default function SyncStatus() {
   const [pending, setPending] = useState(getPendingCount())
+  const [paused, setPaused] = useState(isSyncPaused())
   const [online, setOnline] = useState(() => navigator.onLine)
 
   useEffect(() => {
-    const unsubscribe = subscribeSync(() => setPending(getPendingCount()))
+    const unsubscribe = subscribeSync(() => {
+      setPending(getPendingCount())
+      setPaused(isSyncPaused())
+    })
     const onOnline = () => setOnline(true)
     const onOffline = () => setOnline(false)
     window.addEventListener('online', onOnline)
@@ -18,21 +22,25 @@ export default function SyncStatus() {
     }
   }, [])
 
-  if (online && pending === 0) return null
+  if (online && !paused && pending === 0) return null
 
   const label = !online
     ? `Sin conexión${pending > 0 ? ` · ${pending} pendiente${pending === 1 ? '' : 's'}` : ''}`
-    : `Sincronizando · ${pending} pendiente${pending === 1 ? '' : 's'}`
+    : paused && pending > 0
+      ? `Sesión pausada · ${pending} pendiente${pending === 1 ? '' : 's'}`
+      : `Sincronizando · ${pending} pendiente${pending === 1 ? '' : 's'}`
 
   return (
     <span
       className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
         !online
           ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
-          : 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+          : paused && pending > 0
+            ? 'border-rose-500/40 bg-rose-500/10 text-rose-400'
+            : 'border-sky-500/40 bg-sky-500/10 text-sky-400'
       }`}
     >
-      {!online ? '⚠' : '⏳'} {label}
+      {!online ? '⚠' : paused && pending > 0 ? '🔒' : '⏳'} {label}
     </span>
   )
 }
