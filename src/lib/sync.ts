@@ -6,6 +6,7 @@ export interface PendingOp {
   payload: Record<string, unknown>
   retries: number
   createdAt: string
+  availableAt?: number
 }
 
 export function genId(): string {
@@ -83,6 +84,25 @@ export function enqueue(kind: string, payload: Record<string, unknown>) {
   scheduleFlush(0)
 }
 
+export function enqueueDelayed(
+  kind: string,
+  payload: Record<string, unknown>,
+  delayMs: number,
+) {
+  const op: PendingOp = {
+    id: genId(),
+    kind,
+    payload,
+    retries: 0,
+    createdAt: new Date().toISOString(),
+    availableAt: Date.now() + delayMs,
+  }
+  queue = [...queue, op]
+  persistQueue()
+  notify()
+  scheduleFlush(0)
+}
+
 export function dequeue(predicate: (op: PendingOp) => boolean) {
   const before = queue.length
   queue = queue.filter((op) => !predicate(op))
@@ -93,18 +113,31 @@ export function dequeue(predicate: (op: PendingOp) => boolean) {
 }
 
 function scheduleFlush(delayMs: number) {
+  scheduleFlushAt(Date.now() + delayMs)
+}
+
+function scheduleFlushAt(at: number) {
   if (flushing || flushTimer !== null) return
+  const delay = Math.max(0, at - Date.now())
   flushTimer = window.setTimeout(() => {
     flushTimer = null
     void flush()
-  }, delayMs)
+  }, delay)
 }
 
 async function flush() {
   if (flushing || queue.length === 0) return
   flushing = true
   try {
+    const now = Date.now()
+    const pending = queue.filter((op) => (op.availableAt ?? 0) > now)
+    if (pending.length === queue.length) {
+      const nextAt = Math.min(...pending.map((op) => op.availableAt ?? 0))
+      scheduleFlushAt(nextAt)
+      return
+    }
     for (const op of queue) {
+      if ((op.availableAt ?? 0) > now) continue
       const executor = executors.get(op.kind)
       if (!executor) continue
       try {
@@ -173,5 +206,11 @@ registerExecutor('body_metric_upsert', async (op) => {
   const { error } = await supabase
     .from('body_metrics')
     .upsert(op.payload as never, { onConflict: 'user_id,date' })
+  if (error) throw error
+})
+
+registerExecutor('routine_exercise_remove', async (op) => {
+  const { id } = op.payload as { id: string }
+  const { error } = await supabase.from('routine_exercises').delete().eq('id', id)
   if (error) throw error
 })

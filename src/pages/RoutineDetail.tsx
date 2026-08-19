@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import DayCard from '@/components/DayCard'
 import AddExerciseOverlay from '@/components/AddExerciseOverlay'
 import { useToast } from '@/lib/toast-context'
+import { dequeue, enqueueDelayed } from '@/lib/sync'
 import {
   addExerciseToDay,
   createDay,
   deleteDay,
   fetchRoutineDetail,
-  removeRoutineExercise,
   updateDay,
   updateRoutineExercise,
 } from '@/lib/db'
@@ -24,7 +24,6 @@ export default function RoutineDetail() {
   const [newDayName, setNewDayName] = useState('')
   const [saving, setSaving] = useState(false)
   const [overlayDay, setOverlayDay] = useState<RoutineDay | null>(null)
-  const pendingDeletes = useRef(new Map<string, number>())
 
   const refresh = async () => {
     if (!id) return
@@ -78,19 +77,11 @@ export default function RoutineDetail() {
           : d,
       ),
     )
-    const timer = window.setTimeout(() => {
-      pendingDeletes.current.delete(re.id)
-      void removeRoutineExercise(re.id)
-    }, 4000)
-    pendingDeletes.current.set(re.id, timer)
+    enqueueDelayed('routine_exercise_remove', { id: re.id }, 4000)
     pushToast('info', `"${re.exercise?.name ?? 'Ejercicio'}" quitado`, {
       label: 'Deshacer',
       onClick: () => {
-        const t = pendingDeletes.current.get(re.id)
-        if (t) {
-          clearTimeout(t)
-          pendingDeletes.current.delete(re.id)
-        }
+        dequeue((op) => op.kind === 'routine_exercise_remove' && op.payload.id === re.id)
         setDays((prev) =>
           prev.map((d) => {
             if (d.id !== re.day_id) return d

@@ -230,14 +230,28 @@ export default function Train() {
     }
   }
 
+  function flushAll() {
+    pending.current.forEach((entry) => {
+      if (entry.timer) clearTimeout(entry.timer)
+      if (entry.row) void upsertSessionSet(entry.row)
+    })
+    pending.current.clear()
+    setSavingMap({})
+  }
+
+  function cancelPending() {
+    pending.current.forEach((entry) => {
+      if (entry.timer) clearTimeout(entry.timer)
+    })
+    pending.current.clear()
+    setSavingMap({})
+  }
+
   useEffect(() => {
-    const map = pending.current
     return () => {
-      map.forEach((entry) => {
-        if (entry.row) void upsertSessionSet(entry.row)
-      })
-      map.clear()
+      flushAll()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function deleteSet(exerciseId: string, index: number) {
@@ -260,6 +274,7 @@ export default function Train() {
     if (!session || finishing) return
     setFinishing(true)
     try {
+      flushAll()
       await finishSession(
         session.id,
         Math.max(1, Math.round(elapsedMinutes)),
@@ -275,6 +290,7 @@ export default function Train() {
 
   async function handleDiscard() {
     if (!session) return
+    cancelPending()
     try {
       await deleteSession(session.id)
       pushToast('info', 'Sesión descartada')
@@ -675,12 +691,13 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
           </div>
 
           <div className="mt-2 flex items-center gap-2">
-            <select
+<select
               value={set.rpe === null ? '' : String(set.rpe)}
               onChange={(e) =>
                 onUpdate({ rpe: e.target.value === '' ? null : Number(e.target.value) })
               }
-              className="h-11 min-w-0 flex-1 rounded-lg border border-edge bg-bg px-2 text-xs outline-none focus:border-emerald-500"
+              onBlur={onCommit}
+              className="min-h-11 min-w-0 flex-1 rounded-lg border border-edge bg-bg px-2 text-xs outline-none focus:border-emerald-500"
               title="RPE (esfuerzo percibido 5-10)"
             >
               {RPE_OPTIONS.map((o) => (

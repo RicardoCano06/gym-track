@@ -241,8 +241,7 @@ export async function updateRoutineExercise(
 }
 
 export async function removeRoutineExercise(id: string) {
-  const { error } = await supabase.from('routine_exercises').delete().eq('id', id)
-  if (error) throw error
+  enqueue('routine_exercise_remove', { id })
 }
 
 export async function fetchMuscleGroups(): Promise<string[]> {
