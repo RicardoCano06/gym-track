@@ -237,49 +237,49 @@ export default function DayCard({
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-edge px-4 py-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              setWeekday(day.weekday ?? '')
-              setGoal(day.goal ?? '')
-              setEditingSettings(true)
-            }}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-xs text-dim2 transition-colors hover:bg-surface2 hover:text-high"
-            title="Editar día"
-          >
-            ⚙
-          </button>
-          <button
-            onClick={() =>
-              ask({
-                title: 'Eliminar día',
-                message: `Se borra "${day.name ?? day.day_number}" con todos sus ejercicios.`,
-                confirmLabel: 'Eliminar',
-                danger: true,
-                onConfirm: onDelete,
-              })
-            }
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-xs text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400"
-            title="Eliminar día"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <div className="border-t border-edge px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                setWeekday(day.weekday ?? '')
+                setGoal(day.goal ?? '')
+                setEditingSettings(true)
+              }}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-xs text-dim2 transition-colors hover:bg-surface2 hover:text-high"
+              title="Editar día"
+            >
+              ⚙
+            </button>
+            <button
+              onClick={() =>
+                ask({
+                  title: 'Eliminar día',
+                  message: `Se borra "${day.name ?? day.day_number}" con todos sus ejercicios.`,
+                  confirmLabel: 'Eliminar',
+                  danger: true,
+                  onConfirm: onDelete,
+                })
+              }
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-xs text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400"
+              title="Eliminar día"
+            >
+              ✕
+            </button>
+          </div>
           <span className="text-xs text-dim2">
             {exCount} {exCount === 1 ? 'ejercicio' : 'ejercicios'}
           </span>
-          {exCount > 0 && (
-            <Link
-              to={`/entrenar/${day.id}`}
-              className="flex min-h-11 items-center rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
-            >
-              Iniciar Entrenamiento
-            </Link>
-          )}
         </div>
+
+        {exCount > 0 && (
+          <Link
+            to={`/entrenar/${day.id}`}
+            className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
+          >
+            Iniciar Entrenamiento
+          </Link>
+        )}
       </div>
 
       {dialog}

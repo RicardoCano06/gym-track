@@ -15,7 +15,7 @@ const links = [
 ]
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 transition-colors ${
+  `flex min-h-14 flex-col items-center justify-center gap-0.5 px-0.5 transition-colors ${
     isActive ? 'text-emerald-400' : 'text-dim'
   }`
 
@@ -173,7 +173,7 @@ export default function Layout() {
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end={link.end} className={navLinkClass}>
               {icons[link.to]}
-              <span className="text-[10px] font-medium">{link.label}</span>
+              <span className="w-full truncate text-center text-[10px] font-medium leading-none">{link.label}</span>
             </NavLink>
           ))}
         </div>

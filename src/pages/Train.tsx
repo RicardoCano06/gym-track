@@ -528,89 +528,95 @@ function SetRow({ set, saved, active, onUpdate, onDelete, onNote }: SetRowProps)
         {done ? '✓' : set.set_number}
       </button>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => stepWeight(-1)} className={btn} title="Bajar peso">
-            −
-          </button>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step={0.5}
-            value={set.weight_kg ?? ''}
-            onChange={(e) =>
-              onUpdate({ weight_kg: e.target.value === '' ? null : Number(e.target.value) })
-            }
-            placeholder="Peso"
-            className="h-11 w-12 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
-          />
-          <button onClick={() => stepWeight(1)} className={btn} title="Subir peso">
-            +
-          </button>
-          <button onClick={() => stepReps(-1)} className={btn} title="Bajar reps">
-            −
-          </button>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={set.reps ?? ''}
-            onChange={(e) =>
-              onUpdate({ reps: e.target.value === '' ? null : Number(e.target.value) })
-            }
-            placeholder="Reps"
-            className="h-11 w-11 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
-          />
-          <button onClick={() => stepReps(1)} className={btn} title="Subir reps">
-            +
-          </button>
-        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex items-center gap-1">
+              <span className="w-8 text-xs text-dim2">Peso</span>
+              <button onClick={() => stepWeight(-1)} className={btn} title="Bajar peso">
+                −
+              </button>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={0.5}
+                value={set.weight_kg ?? ''}
+                onChange={(e) =>
+                  onUpdate({ weight_kg: e.target.value === '' ? null : Number(e.target.value) })
+                }
+                placeholder="Peso"
+                className="h-11 w-14 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
+              />
+              <button onClick={() => stepWeight(1)} className={btn} title="Subir peso">
+                +
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-8 text-xs text-dim2">Reps</span>
+              <button onClick={() => stepReps(-1)} className={btn} title="Bajar reps">
+                −
+              </button>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={set.reps ?? ''}
+                onChange={(e) =>
+                  onUpdate({ reps: e.target.value === '' ? null : Number(e.target.value) })
+                }
+                placeholder="Reps"
+                className="h-11 w-12 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
+              />
+              <button onClick={() => stepReps(1)} className={btn} title="Subir reps">
+                +
+              </button>
+            </div>
+          </div>
 
-        <div className="mt-1.5 flex items-center gap-2">
-          <select
-            value={set.rpe === null ? '' : String(set.rpe)}
-            onChange={(e) =>
-              onUpdate({ rpe: e.target.value === '' ? null : Number(e.target.value) })
-            }
-            className="h-11 min-w-0 flex-1 rounded-lg border border-edge bg-bg px-2 text-xs outline-none focus:border-emerald-500"
-            title="RPE (esfuerzo percibido 5-10)"
-          >
-            {RPE_OPTIONS.map((o) => (
-              <option key={o} value={o}>
-                {o === '' ? 'RPE' : `RPE ${o}`}
-              </option>
-            ))}
-          </select>
-          {saved && <span className="text-xs text-emerald-400">✓</span>}
-          <button
-            onClick={onNote}
-            className={`flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-lg transition-colors ${
-              set.notes
-                ? 'text-emerald-400'
-                : 'text-dim2 hover:bg-surface2 hover:text-soft'
-            }`}
-            title={set.notes ? 'Editar nota' : 'Agregar nota'}
-          >
-            ⋯
-          </button>
-          <button
-            onClick={() =>
-              ask({
-                title: 'Eliminar serie',
-                message: `¿Eliminar la serie ${set.set_number}? Se borra también del historial.`,
-                confirmLabel: 'Eliminar',
-                danger: true,
-                onConfirm: onDelete,
-              })
-            }
-            className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400"
-            title="Eliminar serie"
-          >
-            ✕
-          </button>
+          <div className="mt-2 flex items-center gap-2">
+            <select
+              value={set.rpe === null ? '' : String(set.rpe)}
+              onChange={(e) =>
+                onUpdate({ rpe: e.target.value === '' ? null : Number(e.target.value) })
+              }
+              className="h-11 min-w-0 flex-1 rounded-lg border border-edge bg-bg px-2 text-xs outline-none focus:border-emerald-500"
+              title="RPE (esfuerzo percibido 5-10)"
+            >
+              {RPE_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o === '' ? 'RPE' : `RPE ${o}`}
+                </option>
+              ))}
+            </select>
+            {saved && <span className="text-xs text-emerald-400">✓</span>}
+            <button
+              onClick={onNote}
+              className={`flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-lg transition-colors ${
+                set.notes
+                  ? 'text-emerald-400'
+                  : 'text-dim2 hover:bg-surface2 hover:text-soft'
+              }`}
+              title={set.notes ? 'Editar nota' : 'Agregar nota'}
+            >
+              ⋯
+            </button>
+            <button
+              onClick={() =>
+                ask({
+                  title: 'Eliminar serie',
+                  message: `¿Eliminar la serie ${set.set_number}? Se borra también del historial.`,
+                  confirmLabel: 'Eliminar',
+                  danger: true,
+                  onConfirm: onDelete,
+                })
+              }
+              className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400"
+              title="Eliminar serie"
+            >
+              ✕
+            </button>
+          </div>
         </div>
-      </div>
       {dialog}
     </li>
   )
