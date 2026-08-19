@@ -1,6 +1,6 @@
 import type { PostgrestFilterBuilder } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { dequeue, enqueue, genId } from '@/lib/sync'
+import { enqueue, genId } from '@/lib/sync'
 import { WEEKDAYS } from '@/lib/constants'
 import type {
   BodyMetric,
@@ -323,7 +323,6 @@ export async function startSession(userId: string, dayId: string): Promise<Sessi
 }
 
 export async function deleteSessionSet(id: string) {
-  dequeue((op) => op.kind === 'session_set_upsert' && op.payload.id === id)
   enqueue('session_set_delete', { id })
 }
 

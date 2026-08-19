@@ -42,7 +42,15 @@ let paused = loadPaused()
 let currentUserId: string | null = null
 
 const listeners = new Set<() => void>()
-const executors = new Map<string, (op: PendingOp) => Promise<void>>()
+const executors = new Map<string, (op: PendingOp, signal: AbortSignal) => Promise<void>>()
+
+// Consolidacion: cuando se encola un delete sobre una entidad cuyo upsert aun
+// esta pendiente en la cola local, el upsert se cancela y el delete no se
+// encola (la entidad nunca llego a la base de datos). Evita rondas de red
+// innecesarias y la "resurreccion" de filas por fallos intermedios.
+const COALESCE: Record<string, string[]> = {
+  session_set_delete: ['session_set_upsert'],
+}
 
 // Cada cuenta conserva su cola en un namespace propio de localStorage, de modo
 // que un cambio de sesion en el mismo dispositivo no descarta ni mezcla las
@@ -266,7 +274,7 @@ function notify() {
 
 export function registerExecutor(
   kind: string,
-  executor: (op: PendingOp) => Promise<void>,
+  executor: (op: PendingOp, signal: AbortSignal) => Promise<void>,
 ) {
   executors.set(kind, executor)
 }
@@ -288,6 +296,22 @@ export function subscribeSync(listener: () => void): () => void {
 
 export function enqueue(kind: string, payload: Record<string, unknown>) {
   if (!currentUserId) return
+  const cancelKinds = COALESCE[kind]
+  if (cancelKinds) {
+    const target = typeof payload.id === 'string' ? payload.id : null
+    if (target) {
+      const fresh = loadQueue()
+      const idx = fresh.findIndex(
+        (o) => cancelKinds.includes(o.kind) && o.payload.id === target,
+      )
+      if (idx >= 0) {
+        saveQueue(fresh.filter((_, i) => i !== idx))
+        notify()
+        scheduleFlush(0)
+        return
+      }
+    }
+  }
   const op: PendingOp = {
     id: genId(),
     kind,
@@ -362,10 +386,13 @@ async function flushInner() {
     if (op.userId !== currentUserId) continue
     const executor = executors.get(op.kind)
     if (!executor) continue
+    // AbortController: el timeout aborta el fetch subyacente (cierre fisico del
+    // socket) ademas del backstop logico de withTimeout, para que la Pestana B
+    // no encuentre peticiones HTTP huerfanas al reejecutar la misma op.
+    const ac = new AbortController()
+    const abortTimer = window.setTimeout(() => ac.abort(), OP_TIMEOUT)
     try {
-      // Timeout estricto: una peticion colgada no retiene el lock para siempre;
-      // la op queda en la cola y se reintenta (las ops son idempotentes).
-      await withTimeout(executor(op), OP_TIMEOUT, op.kind)
+      await withTimeout(executor(op, ac.signal), OP_TIMEOUT, op.kind)
       saveQueue(loadQueue().filter((q) => q.id !== op.id))
       notify()
     } catch (err) {
@@ -378,6 +405,9 @@ async function flushInner() {
       notify()
       scheduleFlush(Math.min(MAX_BACKOFF, 1000 * 2 ** Math.min(op.retries, 4)))
       return
+    } finally {
+      window.clearTimeout(abortTimer)
+      if (!ac.signal.aborted) ac.abort()
     }
   }
 }
@@ -433,7 +463,16 @@ function applySession(userId: string | null) {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === null) return
+    if (e.key === null) {
+      // localStorage.clear(): el storage entero se limpio en otra pestana.
+      // Recargar todo desde disco y soltar cualquier lock en memoria.
+      releaseLock()
+      queue = loadQueue()
+      paused = loadPaused()
+      notify()
+      scheduleFlush(0)
+      return
+    }
     if (e.key === userKey(QUEUE_PREFIX)) {
       queue = loadQueue()
       notify()
@@ -459,20 +498,21 @@ if (typeof window !== 'undefined') {
 
 // ---------- Ejecutores ----------
 
-registerExecutor('session_set_upsert', async (op) => {
+registerExecutor('session_set_upsert', async (op, signal) => {
   const { error } = await supabase
     .from('session_sets')
     .upsert(op.payload as never, { onConflict: 'id' })
+    .abortSignal(signal)
   if (error) throw error
 })
 
-registerExecutor('session_set_delete', async (op) => {
+registerExecutor('session_set_delete', async (op, signal) => {
   const { id } = op.payload as { id: string }
-  const { error } = await supabase.from('session_sets').delete().eq('id', id)
+  const { error } = await supabase.from('session_sets').delete().eq('id', id).abortSignal(signal)
   if (error) throw error
 })
 
-registerExecutor('session_finish', async (op) => {
+registerExecutor('session_finish', async (op, signal) => {
   const payload = op.payload as {
     id: string
     ended_at: string
@@ -489,18 +529,20 @@ registerExecutor('session_finish', async (op) => {
       notes: payload.notes,
     })
     .eq('id', payload.id)
+    .abortSignal(signal)
   if (error) throw error
 })
 
-registerExecutor('body_metric_upsert', async (op) => {
+registerExecutor('body_metric_upsert', async (op, signal) => {
   const { error } = await supabase
     .from('body_metrics')
     .upsert(op.payload as never, { onConflict: 'user_id,date' })
+    .abortSignal(signal)
   if (error) throw error
 })
 
-registerExecutor('routine_exercise_remove', async (op) => {
+registerExecutor('routine_exercise_remove', async (op, signal) => {
   const { id } = op.payload as { id: string }
-  const { error } = await supabase.from('routine_exercises').delete().eq('id', id)
+  const { error } = await supabase.from('routine_exercises').delete().eq('id', id).abortSignal(signal)
   if (error) throw error
 })

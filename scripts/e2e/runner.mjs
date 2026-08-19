@@ -119,7 +119,7 @@ async function ensureBrowser() {
   return child
 }
 
-const suites = ['sugg-e2e.mjs', 'resid-e2e.mjs', 'edge-a-e2e.mjs', 'edge-b-e2e.mjs', 'auth-e2e.mjs']
+const suites = ['sugg-e2e.mjs', 'resid-e2e.mjs', 'edge-a-e2e.mjs', 'edge-b-e2e.mjs', 'auth-e2e.mjs', 'coalesce-e2e.mjs']
 let failed = false
 const started = []
 
