@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import DayCard from '@/components/DayCard'
@@ -24,6 +24,7 @@ export default function RoutineDetail() {
   const [newDayName, setNewDayName] = useState('')
   const [saving, setSaving] = useState(false)
   const [overlayDay, setOverlayDay] = useState<RoutineDay | null>(null)
+  const pendingDeletes = useRef(new Map<string, number>())
 
   const refresh = async () => {
     if (!id) return
@@ -67,6 +68,45 @@ export default function RoutineDetail() {
   async function handleDeleteDay(day: RoutineDay) {
     await deleteDay(day.id)
     await refresh()
+  }
+
+  function handleRemoveExercise(re: RoutineExercise) {
+    setDays((prev) =>
+      prev.map((d) =>
+        d.id === re.day_id
+          ? { ...d, exercises: (d.exercises ?? []).filter((x) => x.id !== re.id) }
+          : d,
+      ),
+    )
+    const timer = window.setTimeout(() => {
+      pendingDeletes.current.delete(re.id)
+      void removeRoutineExercise(re.id)
+    }, 4000)
+    pendingDeletes.current.set(re.id, timer)
+    pushToast('info', `"${re.exercise?.name ?? 'Ejercicio'}" quitado`, {
+      label: 'Deshacer',
+      onClick: () => {
+        const t = pendingDeletes.current.get(re.id)
+        if (t) {
+          clearTimeout(t)
+          pendingDeletes.current.delete(re.id)
+        }
+        setDays((prev) =>
+          prev.map((d) => {
+            if (d.id !== re.day_id) return d
+            if ((d.exercises ?? []).some((x) => x.id === re.id)) return d
+            const ex = d.exercises ?? []
+            const pos = re.position ?? ex.length + 1
+            const at = ex.findIndex((x) => (x.position ?? 0) > pos)
+            const next = [...ex]
+            if (at < 0) next.push(re)
+            else next.splice(at, 0, re)
+            return { ...d, exercises: next }
+          }),
+        )
+        pushToast('success', 'Ejercicio restaurado')
+      },
+    })
   }
 
   async function handleAddExercise(day: RoutineDay, exercise: Exercise) {
@@ -173,10 +213,7 @@ export default function RoutineDetail() {
             day={day}
             onUpdateDay={(patch) => handleUpdateDay(day, patch)}
             onDelete={() => handleDeleteDay(day)}
-            onRemoveExercise={async (re) => {
-              await removeRoutineExercise(re.id)
-              await refresh()
-            }}
+            onRemoveExercise={handleRemoveExercise}
             onUpdateExercise={async (re, patch) => {
               await updateRoutineExercise(re.id, patch)
             }}

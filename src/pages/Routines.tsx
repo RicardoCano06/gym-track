@@ -117,7 +117,7 @@ export default function Routines() {
               <button
                 onClick={() => handleDelete(routine.id, routine.name)}
                 disabled={deleting === routine.id}
-                className="absolute right-3 top-3 flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 disabled:opacity-30"
+                className="absolute right-3 top-3 flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
                 title="Eliminar rutina"
               >
                 ✕

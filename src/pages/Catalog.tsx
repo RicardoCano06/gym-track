@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ExerciseCard from '@/components/ExerciseCard'
+import ErrorState from '@/components/ErrorState'
 import { categories, equipmentKinds, muscleGroupOrder, muscleGroups } from '@/lib/catalog'
 import { fetchEquipment, fetchExercises, fetchMuscles } from '@/lib/db'
 import type { Equipment, Exercise, Muscle } from '@/lib/types'
@@ -17,6 +18,7 @@ export default function Catalog() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [searchInput, setSearchInput] = useState(search)
 
@@ -36,17 +38,25 @@ export default function Catalog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput])
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true)
-    setPage(0)
+    setError(null)
     fetchExercises({ search, group, equipmentKind: kind, category }, 0)
       .then((res) => {
         setExercises(res.exercises)
         setTotal(res.total)
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        setError('No pudimos cargar el catálogo de ejercicios')
+      })
       .finally(() => setLoading(false))
   }, [search, group, kind, category])
+
+  useEffect(() => {
+    setPage(0)
+    load()
+  }, [load])
 
   const loadMore = useCallback(async () => {
     const next = page + 1
@@ -151,7 +161,9 @@ export default function Catalog() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <ErrorState message={error} onRetry={load} />
+      ) : loading ? (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div

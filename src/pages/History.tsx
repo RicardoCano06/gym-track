@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { fetchExportData, fetchSessionSetsWithExercises, fetchSessions } from '@/lib/db'
+import ErrorState from '@/components/ErrorState'
 import type { ExportRow } from '@/lib/db'
 import type { Session, SessionSet } from '@/lib/types'
 
@@ -72,15 +73,25 @@ export default function History() {
   const { user } = useAuth()
   const [sessions, setSessions] = useState<SessionWithMeta[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!user) return
+    setError(null)
+    setLoading(true)
     fetchSessions(user.id)
       .then(setSessions)
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        setError('No pudimos cargar tu historial')
+      })
       .finally(() => setLoading(false))
   }, [user])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   async function handleExport() {
     if (!user || exporting) return
@@ -126,7 +137,9 @@ export default function History() {
         </div>
       </header>
 
-      {loading ? (
+      {error ? (
+        <ErrorState message={error} onRetry={load} />
+      ) : loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-20 animate-pulse rounded-xl border border-edge bg-surface" />

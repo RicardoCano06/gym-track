@@ -343,6 +343,13 @@ export async function finishSession(
   })
 }
 
+export async function deleteSession(id: string) {
+  const { error: e1 } = await supabase.from('session_sets').delete().eq('session_id', id)
+  if (e1) throw e1
+  const { error } = await supabase.from('sessions').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function fetchSessionSets(sessionId: string): Promise<SessionSet[]> {
   const { data, error } = await supabase
     .from('session_sets')
@@ -540,6 +547,72 @@ export async function fetchNextSession(userId: string): Promise<NextSession | nu
         exerciseCount: row.routine_exercises?.length ?? 0,
         daysAhead: ahead,
       }
+    }
+  }
+  return best
+}
+
+export type SuggestedSession = {
+  routineId: string
+  routineName: string
+  dayId: string
+  dayName: string
+  lastTrainedAt: string | null
+}
+
+export async function fetchSuggestedSession(
+  userId: string,
+): Promise<SuggestedSession | null> {
+  const { data: routines, error: e1 } = await supabase
+    .from('routines')
+    .select('id, name')
+    .eq('user_id', userId)
+  if (e1) throw e1
+  if (!routines || routines.length === 0) return null
+
+  const routineIds = routines.map((r) => r.id)
+  const { data: days, error: e2 } = await supabase
+    .from('routine_days')
+    .select('id, routine_id, name')
+    .in('routine_id', routineIds)
+  if (e2) throw e2
+  if (!days || days.length === 0) return null
+
+  const { data: sessions, error: e3 } = await supabase
+    .from('sessions')
+    .select('day_id, started_at')
+    .eq('user_id', userId)
+    .not('ended_at', 'is', null)
+    .in('day_id', days.map((d) => d.id))
+  if (e3) throw e3
+
+  const lastByDay = new Map<string, string>()
+  for (const s of sessions ?? []) {
+    const cur = lastByDay.get(s.day_id)
+    if (!cur || s.started_at > cur) lastByDay.set(s.day_id, s.started_at)
+  }
+
+  let best: SuggestedSession | null = null
+  for (const d of days) {
+    const last = lastByDay.get(d.id) ?? null
+    const candidate: SuggestedSession = {
+      routineId: d.routine_id,
+      routineName: routines.find((r) => r.id === d.routine_id)?.name ?? '',
+      dayId: d.id,
+      dayName: d.name,
+      lastTrainedAt: last,
+    }
+    if (!best) {
+      best = candidate
+      continue
+    }
+    const bLast = best.lastTrainedAt
+    if (last == null && bLast != null) {
+      best = candidate
+      continue
+    }
+    if (last != null && bLast != null && last < bLast) {
+      best = candidate
     }
   }
   return best

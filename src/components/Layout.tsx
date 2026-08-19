@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import SyncStatus from '@/components/SyncStatus'
+import ScrollToTop from '@/components/ScrollToTop'
 import { useAuth } from '@/lib/auth-context'
+import { useTheme } from '@/lib/theme-context'
 import { supabase } from '@/lib/supabase'
 
 const links = [
@@ -20,26 +21,11 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 function ThemeToggle() {
-  const [dark, setDark] = useState(() => {
-    try {
-      return (localStorage.getItem('gymtrack-theme') ?? 'dark') !== 'light'
-    } catch {
-      return true
-    }
-  })
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('light', !dark)
-    try {
-      localStorage.setItem('gymtrack-theme', dark ? 'dark' : 'light')
-    } catch {
-      // almacenamiento no disponible: el tema vive solo en la sesión
-    }
-  }, [dark])
+  const { dark, toggle } = useTheme()
 
   return (
     <button
-      onClick={() => setDark((d) => !d)}
+      onClick={toggle}
       title={dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       className="min-h-12 rounded-lg border border-edge2 px-2.5 py-1.5 text-xs font-medium text-dim2 transition-colors hover:bg-surface2 hover:text-soft"
     >
@@ -113,12 +99,19 @@ export default function Layout() {
 
   return (
     <div className="min-h-dvh md:flex">
+      <ScrollToTop />
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-edge bg-bg/90 px-4 backdrop-blur md:hidden">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 font-black text-neutral-950">
           G
         </span>
         <span className="text-lg font-bold tracking-tight">GymTrack</span>
-        <span className="ml-auto">
+        <span className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="min-h-12 rounded-lg border border-edge2 px-2.5 py-1.5 text-xs font-medium text-dim2 transition-colors hover:bg-surface2 hover:text-red-400"
+          >
+            Salir
+          </button>
           <ThemeToggle />
         </span>
       </header>

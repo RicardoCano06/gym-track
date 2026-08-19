@@ -187,12 +187,10 @@ interface ExerciseRowProps {
 }
 
 function ExerciseRow({ item, canPair, onRemove, onUpdate, onToggleSuperset }: ExerciseRowProps) {
-  const { ask, dialog } = useConfirm()
   const [sets, setSets] = useState(item.sets)
   const [reps, setReps] = useState(item.reps ?? '')
   const [rest, setRest] = useState(item.rest_seconds)
   const [saved, setSaved] = useState(false)
-  const [removing, setRemoving] = useState(false)
 
   const ex = item.exercise
 
@@ -274,26 +272,12 @@ function ExerciseRow({ item, canPair, onRemove, onUpdate, onToggleSuperset }: Ex
           ↔
         </button>
         <button
-          onClick={() =>
-            ask({
-              title: 'Quitar ejercicio',
-              message: `¿Quitar "${ex?.name}" del día?`,
-              confirmLabel: 'Quitar',
-              danger: true,
-              onConfirm: async () => {
-                setRemoving(true)
-                await onRemove()
-                setRemoving(false)
-              },
-            })
-          }
-          disabled={removing}
-          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
+          onClick={onRemove}
+          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400"
           title="Quitar ejercicio"
         >
           ✕
         </button>
-        {dialog}
       </li>
     </SwipeRow>
   )

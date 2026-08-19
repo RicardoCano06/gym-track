@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import BottomSheet from '@/components/BottomSheet'
+import ErrorState from '@/components/ErrorState'
 import RestTimer from '@/components/RestTimer'
+import { RestTimerProvider } from '@/components/TimerContext'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useConfirm } from '@/lib/use-confirm'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import {
+  deleteSession,
   deleteSessionSet,
   fetchDayDetail,
   fetchSessionSets,
@@ -32,12 +35,16 @@ export default function Train() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { pushToast } = useToast()
+  const { ask, dialog } = useConfirm()
 
   const [day, setDay] = useState<RoutineDay | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [setsByEx, setSetsByEx] = useState<Record<string, SessionSet[]>>({})
   const [loading, setLoading] = useState(true)
   const [savedMap, setSavedMap] = useState<Record<string, boolean>>({})
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const pending = useRef<Map<string, { row: SessionSet; timer?: number }>>(new Map())
   const [showFinish, setShowFinish] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [elapsedMinutes, setElapsedMinutes] = useState(0)
@@ -48,9 +55,11 @@ export default function Train() {
 
   useWakeLock(session !== null)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!user || !dayId) return
     let cancelled = false
+    setLoadError(null)
+    setLoading(true)
     ;(async () => {
       try {
         const dayRes = await fetchDayDetail(dayId)
@@ -85,6 +94,7 @@ export default function Train() {
         setSetsByEx(map)
       } catch (err) {
         console.error(err)
+        setLoadError('No pudimos iniciar la sesión')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -93,6 +103,10 @@ export default function Train() {
       cancelled = true
     }
   }, [user, dayId])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   useEffect(() => {
     if (!session) return
@@ -158,7 +172,7 @@ export default function Train() {
     setNoteTarget(null)
   }
 
-  async function updateSet(
+  function updateSet(
     exerciseId: string,
     index: number,
     patch: Partial<SessionSet>,
@@ -177,15 +191,54 @@ export default function Train() {
       setActive(next)
       persistActive(next)
     }
+    // Solo estado local en cada tecla; la red se difiere con debounce.
+    schedulePersist(exerciseId, index, row)
+  }
+
+  function schedulePersist(exerciseId: string, index: number, row: SessionSet) {
+    const key = `${exerciseId}-${index}`
+    setSavingMap((prev) => ({ ...prev, [key]: true }))
+    const prevEntry = pending.current.get(key)
+    if (prevEntry?.timer) clearTimeout(prevEntry.timer)
+    const timer = window.setTimeout(() => {
+      void flush(key)
+    }, 800)
+    pending.current.set(key, { row, timer })
+  }
+
+  async function flush(key: string) {
+    const entry = pending.current.get(key)
+    if (!entry?.row) return
+    pending.current.delete(key)
     try {
-      await upsertSessionSet(row)
-      const key = `${exerciseId}-${index}`
+      await upsertSessionSet(entry.row)
       setSavedMap((prev) => ({ ...prev, [key]: true }))
-      setTimeout(() => setSavedMap((prev) => ({ ...prev, [key]: false })), 1200)
+      setSavingMap((p) => ({ ...p, [key]: false }))
+      window.setTimeout(() => setSavedMap((p) => ({ ...p, [key]: false })), 1200)
     } catch (err) {
       console.error(err)
+      setSavingMap((p) => ({ ...p, [key]: false }))
     }
   }
+
+  function commitSet(exerciseId: string, index: number) {
+    const key = `${exerciseId}-${index}`
+    const entry = pending.current.get(key)
+    if (entry?.timer) {
+      clearTimeout(entry.timer)
+      void flush(key)
+    }
+  }
+
+  useEffect(() => {
+    const map = pending.current
+    return () => {
+      map.forEach((entry) => {
+        if (entry.row) void upsertSessionSet(entry.row)
+      })
+      map.clear()
+    }
+  }, [])
 
   async function deleteSet(exerciseId: string, index: number) {
     const row = setsByEx[exerciseId][index]
@@ -220,6 +273,18 @@ export default function Train() {
     }
   }
 
+  async function handleDiscard() {
+    if (!session) return
+    try {
+      await deleteSession(session.id)
+      pushToast('info', 'Sesión descartada')
+      navigate('/rutinas')
+    } catch (err) {
+      console.error(err)
+      pushToast('error', 'No se pudo descartar la sesión')
+    }
+  }
+
   if (loading) {
     return (
       <div className="animate-pulse space-y-4">
@@ -229,6 +294,10 @@ export default function Train() {
         <div className="h-48 rounded-xl bg-surface2" />
       </div>
     )
+  }
+
+  if (loadError) {
+    return <ErrorState title="No se pudo iniciar la sesión" message={loadError} onRetry={load} />
   }
 
   if (!day || !session) {
@@ -260,6 +329,7 @@ export default function Train() {
   }
 
   return (
+    <RestTimerProvider>
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -276,6 +346,21 @@ export default function Train() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              ask({
+                title: 'Descartar sesión',
+                message:
+                  'Se borrará esta sesión y todo lo registrado sin guardar. Esta acción no se puede deshacer.',
+                confirmLabel: 'Descartar',
+                danger: true,
+                onConfirm: handleDiscard,
+              })
+            }
+            className="min-h-11 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+          >
+            Descartar
+          </button>
           <span className="rounded-full border border-edge bg-surface px-3 py-1.5 font-mono text-sm font-bold tabular-nums text-emerald-400">
             ⏱ {Math.floor(elapsedMinutes / 60)}h {elapsedMinutes % 60}m
           </span>
@@ -309,9 +394,11 @@ export default function Train() {
                       re={g}
                       rows={setsByEx[g.exercise_id] ?? []}
                       savedMap={savedMap}
+                      savingMap={savingMap}
                       onUpdateSet={(i, patch) => updateSet(g.exercise_id, i, patch)}
                       onDeleteSet={(i) => deleteSet(g.exercise_id, i)}
                       onNoteSet={(i) => openNote(g.exercise_id, i)}
+                      onCommit={(i) => commitSet(g.exercise_id, i)}
                       activeIndex={
                         active?.exerciseId === g.exercise_id ? active.index : undefined
                       }
@@ -331,9 +418,11 @@ export default function Train() {
               re={re}
               rows={setsByEx[re.exercise_id] ?? []}
               savedMap={savedMap}
+              savingMap={savingMap}
               onUpdateSet={(i, patch) => updateSet(re.exercise_id, i, patch)}
               onDeleteSet={(i) => deleteSet(re.exercise_id, i)}
               onNoteSet={(i) => openNote(re.exercise_id, i)}
+              onCommit={(i) => commitSet(re.exercise_id, i)}
               activeIndex={
                 active?.exerciseId === re.exercise_id ? active.index : undefined
               }
@@ -396,15 +485,19 @@ export default function Train() {
           </button>
         </BottomSheet>
       )}
+      {dialog}
     </div>
+    </RestTimerProvider>
   )
 }
 
 interface SetRowProps {
   set: SessionSet
   saved: boolean
+  saving: boolean
   active: boolean
   onUpdate: (patch: Partial<SessionSet>) => void
+  onCommit: () => void
   onDelete: () => void
   onNote: () => void
 }
@@ -413,9 +506,11 @@ interface ExerciseBlockProps {
   re: RoutineExercise
   rows: SessionSet[]
   savedMap: Record<string, boolean>
+  savingMap: Record<string, boolean>
   onUpdateSet: (index: number, patch: Partial<SessionSet>) => void
   onDeleteSet: (index: number) => void
   onNoteSet: (index: number) => void
+  onCommit: (index: number) => void
   activeIndex?: number
   timer?: ReactNode
   bare?: boolean
@@ -425,9 +520,11 @@ function ExerciseBlock({
   re,
   rows,
   savedMap,
+  savingMap,
   onUpdateSet,
   onDeleteSet,
   onNoteSet,
+  onCommit,
   activeIndex,
   timer,
   bare,
@@ -462,8 +559,10 @@ function ExerciseBlock({
             key={`${set.exercise_id}-${set.set_number}`}
             set={set}
             saved={!!savedMap[`${set.exercise_id}-${i}`]}
+            saving={!!savingMap[`${set.exercise_id}-${i}`]}
             active={activeIndex === i}
             onUpdate={(patch) => onUpdateSet(i, patch)}
+            onCommit={() => onCommit(i)}
             onDelete={() => onDeleteSet(i)}
             onNote={() => onNoteSet(i)}
           />
@@ -481,7 +580,7 @@ function ExerciseBlock({
   )
 }
 
-function SetRow({ set, saved, active, onUpdate, onDelete, onNote }: SetRowProps) {
+function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNote }: SetRowProps) {
   const { ask, dialog } = useConfirm()
   const rowRef = useRef<HTMLLIElement>(null)
   const done = set.completed
@@ -511,7 +610,7 @@ function SetRow({ set, saved, active, onUpdate, onDelete, onNote }: SetRowProps)
       ref={rowRef}
       className={`flex items-start gap-2 px-2 py-2 transition-all ${
         active ? 'ring-2 ring-inset ring-emerald-500/60 scale-[1.01] bg-emerald-500/5' : ''
-      } ${done ? 'opacity-50' : ''}`}
+      } ${saving ? 'ring-1 ring-inset ring-emerald-500/40' : ''} ${done ? 'opacity-50' : ''}`}
     >
       <button
         onClick={() => {
@@ -544,6 +643,7 @@ function SetRow({ set, saved, active, onUpdate, onDelete, onNote }: SetRowProps)
                 onChange={(e) =>
                   onUpdate({ weight_kg: e.target.value === '' ? null : Number(e.target.value) })
                 }
+                onBlur={onCommit}
                 placeholder="Peso"
                 className="h-11 w-14 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
               />
@@ -564,6 +664,7 @@ function SetRow({ set, saved, active, onUpdate, onDelete, onNote }: SetRowProps)
                 onChange={(e) =>
                   onUpdate({ reps: e.target.value === '' ? null : Number(e.target.value) })
                 }
+                onBlur={onCommit}
                 placeholder="Reps"
                 className="h-11 w-12 rounded-lg border border-edge bg-bg px-1 text-center text-sm tabular-nums outline-none focus:border-emerald-500"
               />

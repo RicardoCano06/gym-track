@@ -2,8 +2,13 @@ import { createContext, useContext } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info'
 
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
 export interface ToastContextValue {
-  pushToast: (type: ToastType, message: string) => void
+  pushToast: (type: ToastType, message: string, action?: ToastAction) => void
 }
 
 export const ToastContext = createContext<ToastContextValue>({

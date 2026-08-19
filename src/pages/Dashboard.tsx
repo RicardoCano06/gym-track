@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
-import { weekdayLabel } from '@/lib/constants'
 import {
   countSessionsSince,
   fetchActiveSession,
   fetchBodyMetrics,
-  fetchNextSession,
+  fetchSuggestedSession,
   fetchWeeklyMuscleVolume,
 } from '@/lib/db'
-import type { MuscleVolume, NextSession } from '@/lib/db'
+import type { MuscleVolume, SuggestedSession } from '@/lib/db'
 import type { Session } from '@/lib/types'
 
 const TARGET_SETS = 10
@@ -21,7 +20,7 @@ export default function Dashboard() {
   const [prevVolume, setPrevVolume] = useState<MuscleVolume[]>([])
   const [sessionsCount, setSessionsCount] = useState(0)
   const [prevSessionsCount, setPrevSessionsCount] = useState(0)
-  const [next, setNext] = useState<NextSession | null>(null)
+  const [next, setNext] = useState<SuggestedSession | null>(null)
   const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [lastWeight, setLastWeight] = useState<{ weight: number; date: string } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,7 +50,7 @@ export default function Dashboard() {
           fetchWeeklyMuscleVolume(user.id, lastWeekStart.toISOString()),
           countSessionsSince(user.id, weekStart.toISOString()),
           countSessionsSince(user.id, lastWeekStart.toISOString()),
-          fetchNextSession(user.id),
+          fetchSuggestedSession(user.id),
           fetchActiveSession(user.id),
           fetchBodyMetrics(user.id, 1),
         ])
@@ -95,6 +94,14 @@ export default function Dashboard() {
 
   const nextDayId = activeSession?.day_id ?? next?.dayId ?? null
 
+  const lastTrainedLabel = (iso: string | null) => {
+    if (!iso) return 'Nunca entrenado'
+    const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+    if (days <= 0) return 'Entrenado hoy'
+    if (days === 1) return 'Último entrenamiento: ayer'
+    return `Último entrenamiento: hace ${days} días`
+  }
+
   return (
     <div>
       <header className="mb-6">
@@ -134,19 +141,19 @@ export default function Dashboard() {
           {nextDayId ? (
             <div className="rounded-xl bg-emerald-500 p-5 text-neutral-950">
               <p className="text-xs font-semibold uppercase tracking-wider text-neutral-900/80">
-                {activeSession ? 'Sesión en curso' : 'Próxima sesión'}
+                {activeSession ? 'Sesión en curso' : 'Sugerencia para hoy'}
               </p>
               <h2 className="mt-1 text-xl font-bold">
                 {activeSession
                   ? next?.dayId === activeSession.day_id
                     ? next.dayName
                     : 'Retomá donde lo dejaste'
-                  : `${next?.dayName} · ${weekdayLabel(next?.weekday ?? '')}`}
+                  : next?.dayName}
               </h2>
               <p className="mt-1 text-sm text-neutral-900/80">
                 {activeSession
                   ? 'Hay una sesión activa sin finalizar'
-                  : `${next?.routineName} · ${next?.exerciseCount} ejercicios`}
+                  : `${next?.routineName} · ${lastTrainedLabel(next?.lastTrainedAt ?? null)}`}
               </p>
               <Link
                 to={`/entrenar/${nextDayId}`}
@@ -157,9 +164,9 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="rounded-xl border border-edge bg-surface p-5">
-              <h2 className="font-semibold">Sin próxima sesión</h2>
+              <h2 className="font-semibold">Sin sesiones sugeridas</h2>
               <p className="mt-1 text-sm text-dim">
-                Configurá el día de la semana en tus rutinas para recibir sugerencias
+                Creá una rutina con días de entrenamiento para empezar
               </p>
               <Link
                 to="/rutinas"
