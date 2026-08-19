@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Menlo, monospace;
   --color-bg: #0a0a0a;
   --color-surface: #171717;
   --color-surface2: #262626;
@@ -14,6 +15,53 @@
   --color-soft: #d4d4d4;
   --color-high: #e5e5e5;
   --color-strong: #ffffff;
+
+  --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.16);
+  --shadow-glow-lg: 0 0 36px rgba(16, 185, 129, 0.24);
+
+  --animate-shimmer: shimmer 1.8s linear infinite;
+  --animate-rise: rise 0.34s ease-out both;
+  --animate-scale-in: scale-in 0.18s ease-out both;
+  --animate-pop: pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes rise {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes scale-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
 }
 
 .light {
@@ -36,4 +84,79 @@
 
 body {
   @apply bg-bg text-strong antialiased;
+}
+
+/* ---------- Utilidades de superficie ---------- */
+
+@layer components {
+  /* Cristal translúcido con blur (glassmorphism). Reservado al chrome fijo
+     (nav, header, toasts, modales): el backdrop-filter se recalcula en cada
+     frame de scroll y satura la GPU en teléfonos de gama media/baja. */
+  .glass {
+    background-color: color-mix(in oklab, var(--color-surface) 68%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid color-mix(in oklab, var(--color-edge2) 55%, transparent);
+  }
+  .glass-strong {
+    background-color: color-mix(in oklab, var(--color-surface) 84%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid color-mix(in oklab, var(--color-edge2) 45%, transparent);
+  }
+
+  /* Tarjeta de contenido: translucidez por capas SIN backdrop-filter. Cuesta
+     un compositing alfa, no un recompute de blur por píxel, y puede scrollear
+     sin caídas de FPS. */
+  .glass-card {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-surface) 86%, transparent),
+      color-mix(in oklab, var(--color-surface) 62%, transparent)
+    );
+    border: 1px solid var(--color-edge);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-strong) 7%, transparent),
+      0 10px 28px -16px rgba(0, 0, 0, 0.65);
+  }
+
+  /* Borde dual: luz superior + sombra inferior */
+  .card-hairline {
+    border: 1px solid var(--color-edge);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-strong) 7%, transparent),
+      0 10px 28px -16px rgba(0, 0, 0, 0.65);
+  }
+  .edge-light {
+    border-top: 1px solid color-mix(in oklab, var(--color-strong) 8%, transparent);
+  }
+
+  /* Resplandores de acento */
+  .glow-emerald {
+    box-shadow: var(--shadow-glow);
+  }
+  .glow-emerald-lg {
+    box-shadow: var(--shadow-glow-lg);
+  }
+
+  /* Fondo con gradiente radial sutil en la parte superior */
+  .radial-top {
+    background-image: radial-gradient(
+      ellipse at top,
+      color-mix(in oklab, var(--color-emerald-500) 16%, transparent),
+      transparent 62%
+    );
+  }
+
+  /* Skeleton con barrido de luz (shimmer) */
+  .shimmer {
+    background-image: linear-gradient(
+      100deg,
+      transparent 32%,
+      color-mix(in oklab, var(--color-strong) 9%, transparent) 50%,
+      transparent 68%
+    );
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
 }
