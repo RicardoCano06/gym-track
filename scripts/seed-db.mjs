@@ -44,11 +44,12 @@ async function main() {
   const equipmentIds = await upsertEquipment(seed.equipment)
   console.log('Músculos y equipos sincronizados')
 
-  const rows = seed.exercises.map((ex) => ({
+  let rows = seed.exercises.map((ex) => ({
     source_id: ex.source_id,
     name: ex.name,
     name_en: ex.name_en,
     instructions: ex.instructions,
+    instructions_es: ex.instructions_es ?? null,
     muscle_primary: muscleIds.get(ex.muscle_primary) ?? null,
     muscle_secondary: (ex.muscle_secondary ?? []).map((n) => muscleIds.get(n)).filter(Boolean),
     equipment: equipmentIds.get(ex.equipment) ?? null,
@@ -57,6 +58,20 @@ async function main() {
     force: ex.force,
     image_url: ex.image_url,
   }))
+
+  // Evita reintroducir ejercicios que comparten el mismo nombre en español.
+  const seenNames = new Set()
+  const unique = []
+  for (const r of rows) {
+    const k = (r.name ?? '').trim().toLowerCase()
+    if (seenNames.has(k)) {
+      console.warn(`  ! duplicado omitido: "${r.name}" (source ${r.source_id})`)
+      continue
+    }
+    seenNames.add(k)
+    unique.push(r)
+  }
+  rows = unique
 
   const BATCH = 100
   let ok = 0

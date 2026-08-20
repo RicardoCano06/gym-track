@@ -2,64 +2,25 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import SyncStatus from '@/components/SyncStatus'
+import HeaderStatus from '@/components/HeaderStatus'
+import ThemeToggle from '@/components/ThemeToggle'
 import ScrollToTop from '@/components/ScrollToTop'
 import { useTheme } from '@/lib/theme-context'
+import { useLang } from '@/lib/lang-context'
 
 const links = [
-  { to: '/', label: 'Inicio', end: true },
-  { to: '/ejercicios', label: 'Ejercicios' },
-  { to: '/rutinas', label: 'Rutinas' },
-  { to: '/historial', label: 'Historial' },
-  { to: '/estadisticas', label: 'Stats' },
-  { to: '/perfil', label: 'Perfil' },
+  { to: '/', key: 'nav.home', end: true },
+  { to: '/ejercicios', key: 'nav.exercises' },
+  { to: '/rutinas', key: 'nav.routines' },
+  { to: '/historial', key: 'nav.history' },
+  { to: '/estadisticas', key: 'nav.stats' },
+  { to: '/perfil', key: 'nav.profile' },
 ]
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `relative z-10 flex min-h-14 flex-col items-center justify-center gap-0.5 px-0.5 transition-colors duration-200 ${
     isActive ? 'text-emerald-400' : 'text-dim hover:text-high'
   }`
-
-function ThemeToggle() {
-  const { dark, toggle } = useTheme()
-
-  return (
-    <button
-      onClick={toggle}
-      title={dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-      aria-label={dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-edge2 text-dim2 transition-all duration-200 hover:bg-surface2 hover:text-soft"
-    >
-      {dark ? (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="h-5 w-5"
-        >
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-        </svg>
-      ) : (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="h-5 w-5"
-        >
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-        </svg>
-      )}
-    </button>
-  )
-}
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -71,7 +32,7 @@ function Icon({ children }: { children: ReactNode }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className="h-6 w-6"
+      className="h-5 w-5 sm:h-6 sm:w-6"
     >
       {children}
     </svg>
@@ -126,6 +87,7 @@ function BottomNav() {
   const navRef = useRef<HTMLElement>(null)
   const [indicator, setIndicator] = useState({ left: 0, width: 0 })
   const [kbOpen, setKbOpen] = useState(false)
+  const { t } = useLang()
 
   // La medición solo se dispara al cambiar de ruta o de tamaño (ResizeObserver
   // + rAF), nunca en cada render: evita layout thrashing al rotar/redimensionar.
@@ -181,17 +143,17 @@ function BottomNav() {
         kbOpen ? 'pointer-events-none translate-y-28 opacity-0' : ''
       }`}
     >
-      <div
-        aria-hidden
-        className="absolute top-1.5 h-9 rounded-xl bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/20 transition-all duration-300 ease-out"
-        style={{ left: indicator.left + 8, width: Math.max(0, indicator.width - 16) }}
-      />
       <div className="relative mx-auto grid max-w-lg grid-cols-6">
+        <div
+          aria-hidden
+          className="absolute inset-y-1.5 left-0 rounded-xl bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/20 transition-all duration-300 ease-out"
+          style={{ left: indicator.left + 2, width: Math.max(0, indicator.width - 4) }}
+        />
         {links.map((link) => (
           <NavLink key={link.to} to={link.to} end={link.end} className={navLinkClass}>
             {icons[link.to]}
             <span className="w-full truncate text-center text-[10px] font-medium leading-none">
-              {link.label}
+              {t(link.key)}
             </span>
           </NavLink>
         ))}
@@ -202,26 +164,33 @@ function BottomNav() {
 
 export default function Layout() {
   const location = useLocation()
+  const { dark } = useTheme()
+  const { t } = useLang()
+
+  const isTrainRoute = location.pathname.startsWith('/entrenar/')
+
+  // El isotipo tiene su masa visual arriba (arcos de carga) y su arte ocupa
+  // casi todo el alto del lienzo; el wordmark es más bajo y liviano. Se renderiza
+  // el isotipo a ~71% de la altura del texto para que los bordes del arte
+  // coincidan con el alto de las mayúsculas (verificación por centroide).
+  const logo = dark ? '/logo-vekt.png' : '/logo-vekt-dark.png'
+  const letras = dark ? '/letras-vekt-white.png' : '/letras-vekt.png'
 
   return (
     <div className="radial-top min-h-dvh md:flex">
       <ScrollToTop />
-      <header className="glass-strong sticky top-0 z-30 flex h-14 items-center gap-2 px-4 md:hidden">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 font-black text-neutral-950 shadow-[0_0_18px_rgba(16,185,129,0.45)]">
-          G
-        </span>
-        <span className="text-lg font-bold tracking-tight">GymTrack</span>
+      <header className="glass-strong sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-edge px-4 md:hidden">
+        <img src={logo} alt="" aria-hidden className="h-[19px] w-auto" />
+        <img src={letras} alt="Vekt" className="h-[26px] w-auto" />
         <span className="ml-auto">
-          <ThemeToggle />
+          <HeaderStatus />
         </span>
       </header>
 
       <nav className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-edge md:px-4 md:py-6">
         <div className="flex items-center gap-2 px-2 pb-6 text-lg font-bold tracking-tight">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 font-black text-neutral-950 shadow-[0_0_18px_rgba(16,185,129,0.45)]">
-            G
-          </span>
-          <span>GymTrack</span>
+          <img src={logo} alt="" aria-hidden className="h-[21px] w-auto" />
+          <img src={letras} alt="Vekt" className="h-[30px] w-auto" />
           <span className="ml-auto">
             <ThemeToggle />
           </span>
@@ -245,7 +214,7 @@ export default function Layout() {
                   {isActive && (
                     <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
                   )}
-                  {link.label}
+                  {t(link.key)}
                 </>
               )}
             </NavLink>
@@ -262,7 +231,7 @@ export default function Layout() {
       <BottomNav />
 
       <div className="fixed bottom-24 left-3 z-40 md:bottom-8 md:left-auto md:right-4">
-        <SyncStatus />
+        {!isTrainRoute && <SyncStatus />}
       </div>
     </div>
   )

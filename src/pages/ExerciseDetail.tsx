@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
-import { categories, forces, levels } from '@/lib/catalog'
 import { ProgressChart } from '@/components/ProgressChart'
 import { formatShortDate } from '@/lib/format'
 import { fetchExerciseDetail, fetchExerciseProgress } from '@/lib/db'
 import type { ExerciseProgressEntry } from '@/lib/db'
 import type { Equipment, Exercise, Muscle } from '@/lib/types'
+import { displayName, localizedName } from '@/lib/i18n'
+import { useLang } from '@/lib/lang-context'
 
 export default function ExerciseDetail() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { lang, t } = useLang()
   const [detail, setDetail] = useState<{
     exercise: Exercise
     muscles: Muscle[]
@@ -62,12 +64,12 @@ export default function ExerciseDetail() {
     return (
       <div className="mt-16 text-center">
         <div className="text-5xl">🤔</div>
-        <p className="mt-4 font-medium">No se encontró el ejercicio</p>
+        <p className="mt-4 font-medium">{t('detail.notFound')}</p>
         <Link
           to="/ejercicios"
           className="mt-4 inline-block text-sm text-emerald-400 hover:underline"
         >
-          ← Volver al catálogo
+          {t('detail.backCatalog')}
         </Link>
       </div>
     )
@@ -75,6 +77,10 @@ export default function ExerciseDetail() {
 
   const primary = muscles.find((m) => m.id === exercise.muscle_primary)
   const secondary = muscles.filter((m) => m.id !== exercise.muscle_primary)
+  const instructions =
+    (lang === 'es' && exercise.instructions_es?.length
+      ? exercise.instructions_es
+      : exercise.instructions) ?? []
 
   const perSession = new Map<string, ExerciseProgressEntry>()
   for (const entry of progress ?? []) {
@@ -106,7 +112,7 @@ export default function ExerciseDetail() {
         to="/ejercicios"
         className="mb-4 inline-flex items-center gap-1 text-sm text-dim transition-colors hover:text-emerald-400"
       >
-        ← Volver al catálogo
+        {t('detail.backCatalog')}
       </Link>
 
       {exercise.image_url && (
@@ -118,30 +124,35 @@ export default function ExerciseDetail() {
       )}
 
       <div className="mt-6">
-        <h1 className="text-3xl font-bold tracking-tight">{exercise.name}</h1>
-        {exercise.name_en && exercise.name_en !== exercise.name && (
-          <p className="mt-1 text-sm text-dim2">{exercise.name_en}</p>
-        )}
+        <h1 className="text-3xl font-bold tracking-tight">
+          {displayName(exercise, lang)}
+        </h1>
+        {exercise.name_en &&
+          exercise.name_en !== exercise.name && (
+            <p className="mt-1 text-sm text-dim2">
+              {lang === 'en' ? exercise.name : exercise.name_en}
+            </p>
+          )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           {exercise.category && (
             <span className="rounded-full border border-edge bg-surface px-3 py-1 text-xs font-medium text-soft">
-              {categories[exercise.category] ?? exercise.category}
+              {t(`cat.${exercise.category}`)}
             </span>
           )}
           {equipment && (
             <span className="rounded-full border border-edge bg-surface px-3 py-1 text-xs font-medium text-soft">
-              {equipment.name}
+              {localizedName(equipment.name, lang)}
             </span>
           )}
           {exercise.level && (
             <span className="rounded-full border border-edge bg-surface px-3 py-1 text-xs font-medium text-soft">
-              {levels[exercise.level] ?? exercise.level}
+              {t(`level.${exercise.level}`)}
             </span>
           )}
           {exercise.force && (
             <span className="rounded-full border border-edge bg-surface px-3 py-1 text-xs font-medium text-soft">
-              {forces[exercise.force] ?? exercise.force}
+              {t(`force.${exercise.force}`)}
             </span>
           )}
         </div>
@@ -149,12 +160,12 @@ export default function ExerciseDetail() {
 
       <section className="mt-8">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-dim">
-          Músculos trabajados
+          {t('detail.musclesWorked')}
         </h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {primary && (
             <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-400">
-              {primary.name} · principal
+              {t('common.principal', { name: localizedName(primary.name, lang) })}
             </span>
           )}
           {secondary.map((m) => (
@@ -162,22 +173,22 @@ export default function ExerciseDetail() {
               key={m.id}
               className="rounded-full border border-edge bg-surface px-3 py-1.5 text-sm text-soft"
             >
-              {m.name}
+              {localizedName(m.name, lang)}
             </span>
           ))}
           {!primary && secondary.length === 0 && (
-            <span className="text-sm text-dim2">Sin datos de músculos</span>
+            <span className="text-sm text-dim2">{t('detail.noMuscleData')}</span>
           )}
         </div>
       </section>
 
-      {exercise.instructions && exercise.instructions.length > 0 && (
+      {instructions.length > 0 && (
         <section className="mt-8">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-dim">
-            Cómo hacerlo
+            {t('detail.howTo')}
           </h2>
           <ol className="mt-3 space-y-3">
-            {exercise.instructions.map((step, i) => (
+            {instructions.map((step, i) => (
               <li key={i} className="flex gap-3 text-sm leading-relaxed text-soft">
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface2 text-[11px] font-bold text-emerald-400">
                   {i + 1}
@@ -192,19 +203,16 @@ export default function ExerciseDetail() {
       {progress && (
         <section className="card-hairline glass-card mt-8 rounded-2xl p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-dim">
-            Tu progreso
+            {t('detail.yourProgress')}
           </h2>
           {progress.length === 0 ? (
-            <p className="mt-3 text-sm text-dim">
-              Todavía no registraste series de este ejercicio. Entrenalo en una sesión
-              y vas a ver tu evolución acá.
-            </p>
+            <p className="mt-3 text-sm text-dim">{t('detail.noProgress')}</p>
           ) : (
             <>
               <div className="mt-4 grid grid-cols-3 gap-3">
-                <Stat label="Peso máximo" value={maxWeight ? `${maxWeight} kg` : '—'} />
-                <Stat label="1RM estimado" value={maxOneRm ? `${maxOneRm.toFixed(1)} kg` : '—'} />
-                <Stat label="Sesiones" value={String(perSession.size)} />
+                <Stat label={t('detail.maxWeight')} value={maxWeight ? `${maxWeight} kg` : '—'} />
+                <Stat label={t('detail.estOneRm')} value={maxOneRm ? `${maxOneRm.toFixed(1)} kg` : '—'} />
+                <Stat label={t('detail.sessions')} value={String(perSession.size)} />
               </div>
 
               {series.length >= 2 && <ProgressChart series={series} />}
@@ -215,9 +223,9 @@ export default function ExerciseDetail() {
                   .slice(0, 6)
                   .map((e) => (
                     <li key={e.session_id} className="flex items-center justify-between py-2 text-sm">
-                      <span className="text-dim">{formatShortDate(e.date)}</span>
+                      <span className="text-dim">{formatShortDate(e.date, lang)}</span>
                       <span className="font-medium">
-                        {e.weight_kg ? `${e.weight_kg} kg` : 'Peso corporal'} × {e.reps ?? '—'}
+                        {e.weight_kg ? `${e.weight_kg} kg` : t('detail.bodyweight')} × {e.reps ?? '—'}
                         {e.rpe ? ` · RPE ${e.rpe}` : ''}
                       </span>
                     </li>

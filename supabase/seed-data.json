@@ -10255,25 +10255,6 @@
       "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Kettlebell_Clean_and_Jerk/0.jpg"
     },
     {
-      "source_id": "One-Arm_Kettlebell_Floor_Press",
-      "name": "Press en el suelo con pesa rusa a un brazo",
-      "name_en": "One-Arm Kettlebell Floor Press",
-      "instructions": [
-        "Lie on the floor holding a kettlebell with one hand, with your upper arm supported by the floor. The palm should be facing in.",
-        "Press the kettlebell straight up toward the ceiling, rotating your wrist.",
-        "Lower the kettlebell back to the starting position and repeat."
-      ],
-      "muscle_primary": "Pectorales",
-      "muscle_secondary": [
-        "Tríceps"
-      ],
-      "equipment": "Pesa rusa",
-      "category": "fuerza",
-      "level": "intermedio",
-      "force": "push",
-      "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Kettlebell_Floor_Press/0.jpg"
-    },
-    {
       "source_id": "One-Arm_Kettlebell_Jerk",
       "name": "Envión con pesa rusa a un brazo",
       "name_en": "One-Arm Kettlebell Jerk",
@@ -14692,28 +14673,6 @@
       "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Smith_Machine_Close-Grip_Bench_Press/0.jpg"
     },
     {
-      "source_id": "Smith_Machine_Decline_Press",
-      "name": "Press declinado en Smith",
-      "name_en": "Smith Machine Decline Press",
-      "instructions": [
-        "Position a decline bench in the rack so that the bar will be above your chest. Load an appropriate weight and take your place on the bench.",
-        "Rotate the bar to unhook it from the rack and fully extend your arms. Your back should be slightly arched and your shoulder blades retracted. This will be your starting position.",
-        "Begin the movement by flexing your arms, lowering the bar to your chest.",
-        "Pause briefly, and then extend your arms to push the weight back to the starting position.",
-        "After completing the desired number of repetitions, rotate the bar to rack the weight."
-      ],
-      "muscle_primary": "Pectorales",
-      "muscle_secondary": [
-        "Hombros",
-        "Tríceps"
-      ],
-      "equipment": "Máquina",
-      "category": "fuerza",
-      "level": "principiante",
-      "force": null,
-      "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Smith_Machine_Decline_Press/0.jpg"
-    },
-    {
       "source_id": "Smith_Machine_Hang_Power_Clean",
       "name": "Cargada de potencia colgado en Smith",
       "name_en": "Smith Machine Hang Power Clean",
@@ -16267,29 +16226,6 @@
       "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_One-Arm_Dumbbell_Curl_Over_Incline_Bench/0.jpg"
     },
     {
-      "source_id": "Standing_One-Arm_Dumbbell_Triceps_Extension",
-      "name": "Extensión de tríceps de pie a un brazo",
-      "name_en": "Standing One-Arm Dumbbell Triceps Extension",
-      "instructions": [
-        "To begin, stand up with a dumbbell held in one hand. Your feet should be about shoulder width apart from each other. Now fully extend the arm with the dumbbell over your head. Tip: The small finger of your hand should be facing the ceiling and the palm of your hand should be facing forward. The dumbbell should be above your head.",
-        "This will be your starting position.",
-        "Keeping your upper arm close to your head (elbows in) and perpendicular to the floor, lower the resistance in a semicircular motion behind your head until your forearm touch your bicep. Tip: The upper arm should remain stationary and only the forearm should move. Breathe in as you perform this step.",
-        "Go back to the starting position by using the triceps to raise the dumbbell. Breathe out as you perform this step.",
-        "Repeat for the recommended amount of repetitions.",
-        "Switch arms and repeat the exercise."
-      ],
-      "muscle_primary": "Tríceps",
-      "muscle_secondary": [
-        "Pectorales",
-        "Hombros"
-      ],
-      "equipment": "Mancuerna",
-      "category": "fuerza",
-      "level": "principiante",
-      "force": "push",
-      "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_One-Arm_Dumbbell_Triceps_Extension/0.jpg"
-    },
-    {
       "source_id": "Standing_Overhead_Barbell_Triceps_Extension",
       "name": "Extensión de tríceps sobre la cabeza con barra",
       "name_en": "Standing Overhead Barbell Triceps Extension",
@@ -16523,26 +16459,6 @@
       "level": "principiante",
       "force": "push",
       "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Step-up_with_Knee_Raise/0.jpg"
-    },
-    {
-      "source_id": "Step_Mill",
-      "name": "Escaladora",
-      "name_en": "Step Mill",
-      "instructions": [
-        "To begin, step onto the stepmill and select the desired option from the menu. You can choose a manual setting, or you can select a program to run. Typically, you can enter your age and weight to estimate the amount of calories burned during exercise. Use caution so that you don't trip as you climb the stairs. It is recommended that you maintain your grip on the handles so that you don't fall.",
-        "Stepmills offer convenience, cardiovascular benefits, and usually have less impact than running outside while offering a similar rate of calories burned. They are typically much harder than other cardio equipment. A 150 lb person will typically burn over 300 calories in 30 minutes, compared to about 175 calories walking."
-      ],
-      "muscle_primary": "Cuádriceps",
-      "muscle_secondary": [
-        "Gemelos",
-        "Glúteos",
-        "Isquiotibiales"
-      ],
-      "equipment": "Máquina",
-      "category": "cardio",
-      "level": "intermedio",
-      "force": null,
-      "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Step_Mill/0.jpg"
     },
     {
       "source_id": "Stiff-Legged_Barbell_Deadlift",
@@ -17271,24 +17187,6 @@
       "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tricep_Side_Stretch/0.jpg"
     },
     {
-      "source_id": "Triceps_Overhead_Extension_with_Rope",
-      "name": "Extensión de tríceps sobre la cabeza con cuerda",
-      "name_en": "Triceps Overhead Extension with Rope",
-      "instructions": [
-        "Attach a rope to a low pulley. After selecting an appropriate weight, grasp the rope with both hands and face away from the cable.",
-        "Position your hands behind your head with your elbows point straight up. Your elbows should start out flexed, and you can stagger your stance and lean gently away from the machine to create greater stability. This will be your starting position.",
-        "To perform the movement, extend through the elbow while keeping the upper arm in position, raising your hands above your head.",
-        "Squeeze your triceps at the top of the movement, and slowly lower the weight back to the start position."
-      ],
-      "muscle_primary": "Tríceps",
-      "muscle_secondary": [],
-      "equipment": "Polea",
-      "category": "fuerza",
-      "level": "principiante",
-      "force": "push",
-      "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Triceps_Overhead_Extension_with_Rope/0.jpg"
-    },
-    {
       "source_id": "Triceps_Pushdown",
       "name": "Pressdown de tríceps",
       "name_en": "Triceps Pushdown",
@@ -17422,25 +17320,6 @@
       "level": "intermedio",
       "force": "pull",
       "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Two-Arm_Kettlebell_Clean/0.jpg"
-    },
-    {
-      "source_id": "Two-Arm_Kettlebell_Jerk",
-      "name": "Envión con dos pesas rusas",
-      "name_en": "Two-Arm Kettlebell Jerk",
-      "instructions": [
-        "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you swing the kettlebells towards your shoulders. Rotate your wrists as you do so, so that the palms face forward. Squat down a few inches and reverse the motion rapidly driving both kettlebells overhead. Immediately after the initial push, squat down again and get under the kettlebells. Once the kettlebells are locked out, stand upright to complete the exercise."
-      ],
-      "muscle_primary": "Hombros",
-      "muscle_secondary": [
-        "Gemelos",
-        "Cuádriceps",
-        "Tríceps"
-      ],
-      "equipment": "Pesa rusa",
-      "category": "fuerza",
-      "level": "intermedio",
-      "force": "push",
-      "image_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Two-Arm_Kettlebell_Jerk/0.jpg"
     },
     {
       "source_id": "Two-Arm_Kettlebell_Military_Press",

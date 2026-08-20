@@ -146,6 +146,28 @@ export async function createRoutine(userId: string, name: string): Promise<Routi
 }
 
 export async function deleteRoutine(id: string) {
+  // Las sesiones referencian routine_id/day_id sin ON DELETE SET NULL en el
+  // esquema: si la rutina tiene historial, el DELETE falla con FK (23503).
+  // Desligamos las referencias primero para conservar el historial.
+  const { data: days } = await supabase
+    .from('routine_days')
+    .select('id')
+    .eq('routine_id', id)
+  if (days && days.length > 0) {
+    const { error: e0 } = await supabase
+      .from('sessions')
+      .update({ day_id: null })
+      .in(
+        'day_id',
+        (days as { id: string }[]).map((d) => d.id),
+      )
+    if (e0) throw e0
+  }
+  const { error: e1 } = await supabase
+    .from('sessions')
+    .update({ routine_id: null })
+    .eq('routine_id', id)
+  if (e1) throw e1
   const { error } = await supabase.from('routines').delete().eq('id', id)
   if (error) throw error
 }
@@ -161,7 +183,7 @@ export async function fetchRoutineDetail(id: string) {
   const { data, error: err } = await supabase
     .from('routine_days')
     .select(
-      '*, exercises:routine_exercises(*, exercises(id, name, image_url, muscle_primary, equipment))',
+      '*, exercises:routine_exercises(*, exercises(id, name, name_en, image_url, muscle_primary, equipment))',
     )
     .eq('routine_id', id)
     .order('day_number')
@@ -280,7 +302,7 @@ export async function fetchExercisesByGroup(
 export async function fetchDayDetail(dayId: string): Promise<RoutineDay> {
   const { data, error } = await supabase
     .from('routine_days')
-    .select('*, exercises:routine_exercises(*, exercises(id, name, image_url, muscle_primary))')
+    .select('*, exercises:routine_exercises(*, exercises(id, name, name_en, image_url, muscle_primary))')
     .eq('id', dayId)
     .single()
   if (error) throw error
@@ -390,7 +412,7 @@ export async function fetchSessions(userId: string) {
 export async function fetchSessionSetsWithExercises(sessionId: string) {
   const { data, error } = await supabase
     .from('session_sets')
-    .select('*, exercises(id, name, image_url)')
+    .select('*, exercises(id, name, name_en, image_url)')
     .eq('session_id', sessionId)
     .order('exercise_id')
     .order('set_number')
@@ -771,6 +793,7 @@ export async function fetchWeeklyVolumeSeries(
 export interface PR {
   exerciseId: string
   name: string
+  name_en?: string | null
   imageUrl: string | null
   maxWeight: number | null
   maxOneRm: number | null
@@ -781,7 +804,7 @@ export interface PR {
 export async function fetchPRs(userId: string, limit = 8): Promise<PR[]> {
   const { data, error } = await supabase
     .from('session_sets')
-    .select('weight_kg, reps, exercises(id, name, image_url), sessions(started_at)')
+    .select('weight_kg, reps, exercises(id, name, name_en, image_url), sessions(started_at)')
     .eq('completed', true)
     .eq('sessions.user_id', userId)
     .not('sessions.ended_at', 'is', null)
@@ -791,7 +814,7 @@ export async function fetchPRs(userId: string, limit = 8): Promise<PR[]> {
   for (const row of (data ?? []) as unknown as Array<{
     weight_kg: number | null
     reps: number | null
-    exercises: { id: string; name: string; image_url: string | null } | null
+    exercises: { id: string; name: string; name_en: string | null; image_url: string | null } | null
     sessions: { started_at: string } | null
   }>) {
     const ex = row.exercises
@@ -834,6 +857,7 @@ export interface ExportRow {
   feeling: number | null
   set_number: number | null
   exercise_name: string | null
+  exercise_name_en: string | null
   weight_kg: number | null
   reps: number | null
   rpe: number | null
@@ -843,7 +867,7 @@ export async function fetchExportData(userId: string): Promise<ExportRow[]> {
   const { data, error } = await supabase
     .from('sessions')
     .select(
-      'started_at, duration_minutes, feeling, routines(name), routine_days(name), session_sets(set_number, weight_kg, reps, rpe, exercises(name))',
+      'started_at, duration_minutes, feeling, routines(name), routine_days(name), session_sets(set_number, weight_kg, reps, rpe, exercises(name, name_en))',
     )
     .eq('user_id', userId)
     .not('ended_at', 'is', null)
@@ -863,7 +887,7 @@ export async function fetchExportData(userId: string): Promise<ExportRow[]> {
         weight_kg: number | null
         reps: number | null
         rpe: number | null
-        exercises: { name: string } | null
+        exercises: { name: string; name_en: string | null } | null
       }[]
     }
     const base = {
@@ -875,13 +899,14 @@ export async function fetchExportData(userId: string): Promise<ExportRow[]> {
     }
     const sets = s.session_sets ?? []
     if (sets.length === 0) {
-      rows.push({ ...base, set_number: null, exercise_name: null, weight_kg: null, reps: null, rpe: null })
+      rows.push({ ...base, set_number: null, exercise_name: null, exercise_name_en: null, weight_kg: null, reps: null, rpe: null })
     } else {
       for (const set of sets) {
         rows.push({
           ...base,
           set_number: set.set_number,
           exercise_name: set.exercises?.name ?? null,
+          exercise_name_en: set.exercises?.name_en ?? null,
           weight_kg: set.weight_kg,
           reps: set.reps,
           rpe: set.rpe,

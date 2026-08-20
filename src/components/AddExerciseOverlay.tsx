@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { categories, equipmentKinds, muscleGroups } from '@/lib/catalog'
+import { createPortal } from 'react-dom'
+import { categories, muscleGroupOrder } from '@/lib/catalog'
 import { fetchEquipment, fetchExercises } from '@/lib/db'
 import type { Equipment, Exercise, RoutineDay } from '@/lib/types'
 import BodyMap from '@/components/BodyMap'
 import { useToast } from '@/lib/toast-context'
+import { displayName } from '@/lib/i18n'
+import { useLang } from '@/lib/lang-context'
 
 interface Props {
   day: RoutineDay
@@ -13,6 +16,7 @@ interface Props {
 
 export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
   const { pushToast } = useToast()
+  const { lang, t } = useLang()
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState('')
   const [kind, setKind] = useState('')
@@ -45,7 +49,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
       return
     }
     let cancelled = false
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setFetching(true)
       fetchExercises({ search: query.trim(), group, equipmentKind: kind, category }, 0)
         .then((res) => {
@@ -54,16 +58,19 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
           setTotal(res.total)
           setSearched(true)
         })
-        .catch(console.error)
+        .catch((err) => {
+          console.error(err)
+          if (!cancelled) pushToast('error', t('add.searchError'))
+        })
         .finally(() => {
           if (!cancelled) setFetching(false)
         })
     }, 250)
     return () => {
       cancelled = true
-      clearTimeout(t)
+      clearTimeout(timer)
     }
-  }, [query, group, kind, category, showBodyMap])
+  }, [query, group, kind, category, showBodyMap, pushToast, t])
 
   const alreadyAdded = new Set([
     ...(day.exercises ?? []).map((re) => re.exercise_id),
@@ -80,10 +87,10 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
   function handleAdd(ex: Exercise) {
     onAdd(ex)
     setAddedIds((prev) => new Set(prev).add(ex.id))
-    pushToast('success', `"${ex.name}" agregado`)
+    pushToast('success', t('add.added', { name: displayName(ex, lang) }))
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col bg-bg">
       <div className="flex items-center gap-3 border-b border-edge px-4 py-3">
         <button
@@ -92,15 +99,15 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
         >
           ✕
         </button>
-        <h2 className="flex-1 text-lg font-bold">Agregar ejercicio</h2>
+        <h2 className="flex-1 text-lg font-bold">{t('add.title')}</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-4 p-4">
           <div>
-            <p className="mb-2 text-sm text-dim2">Grupo muscular</p>
+            <p className="mb-2 text-sm text-dim2">{t('add.muscleGroup')}</p>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(muscleGroups).map(([key, label]) => {
+              {muscleGroupOrder.map((key) => {
                 const active = group === key
                 return (
                   <button
@@ -112,7 +119,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                         : 'border-edge bg-surface text-soft hover:border-emerald-500/50'
                     }`}
                   >
-                    {label}
+                    {t(`group.${key}`)}
                   </button>
                 )
               })}
@@ -121,7 +128,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
               onClick={() => setShowBodyMap((v) => !v)}
               className="mt-3 text-xs font-medium text-emerald-400 hover:underline"
             >
-              {showBodyMap ? 'Ocultar mapa corporal' : 'Ver mapa corporal'}
+              {showBodyMap ? t('add.hideBodyMap') : t('add.seeBodyMap')}
             </button>
             {showBodyMap && (
               <div className="mt-3">
@@ -135,7 +142,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscá por nombre..."
+              placeholder={t('add.searchPlaceholder')}
               autoFocus
               className="flex-1 rounded-xl border border-edge bg-surface px-4 py-3 text-sm outline-none transition-colors placeholder:text-dim3 focus:border-emerald-500"
             />
@@ -150,7 +157,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                 }}
                 className="flex min-h-11 items-center rounded-xl border border-edge px-3 text-sm text-dim2 transition-colors hover:bg-surface2"
               >
-                Limpiar
+                {t('add.clear')}
               </button>
             )}
           </div>
@@ -161,10 +168,10 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
               onChange={(e) => setKind(e.target.value)}
               className="min-h-11 shrink-0 rounded-xl border border-edge bg-surface px-3 text-sm text-soft outline-none focus:border-emerald-500"
             >
-              <option value="">Todos los equipos</option>
+              <option value="">{t('catalog.allEquipment')}</option>
               {kinds.map((k) => (
                 <option key={k} value={k}>
-                  {equipmentKinds[k] ?? k}
+                  {t(`eqkind.${k}`)}
                 </option>
               ))}
             </select>
@@ -173,10 +180,10 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
               onChange={(e) => setCategory(e.target.value)}
               className="min-h-11 shrink-0 rounded-xl border border-edge bg-surface px-3 text-sm text-soft outline-none focus:border-emerald-500"
             >
-              <option value="">Todas las categorías</option>
-              {Object.entries(categories).map(([key, label]) => (
+              <option value="">{t('catalog.allCategories')}</option>
+              {Object.entries(categories).map(([key]) => (
                 <option key={key} value={key}>
-                  {label}
+                  {t(`cat.${key}`)}
                 </option>
               ))}
             </select>
@@ -184,7 +191,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
 
           <div className="flex items-center justify-between">
             <p className="text-xs text-dim2">
-              {searched ? `${total} resultado${total === 1 ? '' : 's'}` : ''}
+              {searched ? t('add.results', { n: total, s: total === 1 ? '' : 's' }) : ''}
             </p>
           </div>
 
@@ -213,15 +220,21 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                     </div>
                   )}
                   <div className="px-3 py-2.5">
-                    <p className="truncate text-sm font-medium">{ex.name}</p>
-                    <p className="mt-0.5 truncate text-xs text-dim2">{ex.category}</p>
+                    <p className="truncate text-sm font-medium">
+                      {displayName(ex, lang)}
+                    </p>
+                    {ex.category && (
+                      <p className="mt-0.5 truncate text-xs text-dim2">
+                        {t(`cat.${ex.category}`)}
+                      </p>
+                    )}
                   </div>
                 </button>
               ))}
             </div>
           ) : searched ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm font-medium text-soft">Sin resultados</p>
+              <p className="text-sm font-medium text-soft">{t('add.noResults')}</p>
               {hasFilters && (
                 <button
                   onClick={() => {
@@ -233,17 +246,18 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                   }}
                   className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
                 >
-                  Limpiar filtros
+                  {t('add.clearFilters')}
                 </button>
               )}
             </div>
           ) : (
             <p className="py-8 text-center text-sm text-dim2">
-              Elegí un grupo muscular o escribí para buscar ejercicios
+              {t('add.initialHint')}
             </p>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

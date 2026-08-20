@@ -1,5 +1,5 @@
 -- ============================================================
--- GymTrack — Migración 003: día de la semana en routine_days
+-- Vekt — Migración 003: día de la semana en routine_days
 -- Ejecutar en el SQL Editor de Supabase
 -- ============================================================
 

@@ -1,4 +1,5 @@
 import { useRestTimer } from '@/components/TimerContext'
+import { useLang } from '@/lib/lang-context'
 
 const QUICK_OPTIONS = [60, 90, 120, 180]
 const R = 30
@@ -6,6 +7,7 @@ const C = 2 * Math.PI * R
 
 export default function RestTimer() {
   const { running, remaining, total, start, extend, stop } = useRestTimer()
+  const { t } = useLang()
 
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
@@ -41,7 +43,6 @@ export default function RestTimer() {
             strokeDasharray={C}
             strokeDashoffset={C * (1 - progress)}
             className="transition-all duration-300 ease-linear"
-            style={{ filter: running ? 'drop-shadow(0 0 6px rgba(16,185,129,0.5))' : 'none' }}
           />
         </svg>
         <span
@@ -54,9 +55,9 @@ export default function RestTimer() {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-dim2">Descanso</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-dim2">{t('rest.title')}</p>
         <p className={`text-lg font-bold tracking-tight ${urgent ? 'text-rose-400' : 'text-high'}`}>
-          {running ? (urgent ? '¡A entrenar!' : 'Descansando') : 'Listo para arrancar'}
+          {running ? (urgent ? t('rest.working') : t('rest.resting')) : t('rest.ready')}
         </p>
       </div>
 
@@ -66,7 +67,7 @@ export default function RestTimer() {
             <button
               key={s}
               onClick={() => start(s)}
-              className="min-h-11 rounded-lg bg-surface2 px-3 py-2 font-mono text-xs font-medium text-soft transition-all duration-200 hover:bg-emerald-500/20 hover:text-emerald-400 active:scale-95"
+              className="min-h-11 rounded-lg bg-surface2 px-3 py-2 font-mono text-xs font-medium text-soft transition-all duration-200 hover:bg-surface hover:text-strong active:scale-95"
             >
               {s / 60}m
             </button>
@@ -76,7 +77,7 @@ export default function RestTimer() {
         <div className="flex gap-1.5">
           <button
             onClick={extend}
-            className="min-h-11 rounded-lg bg-surface2 px-3 py-2 text-xs font-medium text-soft transition-all duration-200 hover:bg-emerald-500/20 hover:text-emerald-400 active:scale-95"
+            className="min-h-11 rounded-lg bg-surface2 px-3 py-2 text-xs font-medium text-soft transition-all duration-200 hover:bg-surface hover:text-strong active:scale-95"
           >
             +30s
           </button>
@@ -84,7 +85,7 @@ export default function RestTimer() {
             onClick={stop}
             className="min-h-11 rounded-lg bg-surface2 px-3 py-2 text-xs font-medium text-soft transition-all duration-200 hover:bg-rose-500/20 hover:text-rose-400 active:scale-95"
           >
-            Detener
+            {t('rest.stop')}
           </button>
         </div>
       )}

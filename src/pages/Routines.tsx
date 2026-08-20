@@ -3,12 +3,16 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useConfirm } from '@/lib/use-confirm'
 import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
 import { createRoutine, deleteRoutine, fetchRoutines } from '@/lib/db'
 import type { Routine } from '@/lib/types'
+import { useLang } from '@/lib/lang-context'
 
 export default function Routines() {
   const { user } = useAuth()
   const { ask, dialog } = useConfirm()
+  const { pushToast } = useToast()
+  const { lang, t } = useLang()
   const [routines, setRoutines] = useState<Routine[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
@@ -31,8 +35,10 @@ export default function Routines() {
       const routine = await createRoutine(user.id, newName.trim())
       setRoutines((prev) => [routine, ...prev])
       setNewName('')
+      pushToast('success', t('routines.created'))
     } catch (err) {
       console.error(err)
+      pushToast('error', t('routines.createError'))
     } finally {
       setCreating(false)
     }
@@ -40,17 +46,20 @@ export default function Routines() {
 
   async function handleDelete(id: string, name: string) {
     ask({
-      title: 'Eliminar rutina',
-      message: `Se borra "${name}" con todos sus días y ejercicios.`,
-      confirmLabel: 'Eliminar',
+      title: t('routines.deleteTitle'),
+      message: t('routines.deleteMessage', { name }),
+      confirmLabel: t('routines.delete'),
       danger: true,
       onConfirm: async () => {
         setDeleting(id)
         try {
           await deleteRoutine(id)
           setRoutines((prev) => prev.filter((r) => r.id !== id))
+          pushToast('success', t('routines.deleted'))
         } catch (err) {
           console.error(err)
+          pushToast('error', t('routines.deleteError'))
+          throw err
         } finally {
           setDeleting(null)
         }
@@ -61,10 +70,8 @@ export default function Routines() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Rutinas</h1>
-        <p className="mt-1 text-sm text-dim">
-          Tus planes de entrenamiento organizados por día
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{t('routines.title')}</h1>
+        <p className="mt-1 text-sm text-dim">{t('routines.subtitle')}</p>
       </header>
 
       <form onSubmit={handleCreate} className="mb-8 flex gap-2">
@@ -72,7 +79,7 @@ export default function Routines() {
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nombre de la rutina (ej: Volumen 5 días)"
+          placeholder={t('routines.namePlaceholder')}
           className="flex-1 rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
         />
         <button
@@ -80,7 +87,7 @@ export default function Routines() {
           disabled={creating || !newName.trim()}
           className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
         >
-          Crear
+          {t('routines.create')}
         </button>
       </form>
 
@@ -93,10 +100,8 @@ export default function Routines() {
       ) : routines.length === 0 ? (
         <div className="mt-16 text-center">
           <div className="text-5xl">🗓️</div>
-          <p className="mt-4 font-medium">Todavía no tenés rutinas</p>
-          <p className="mt-1 text-sm text-dim">
-            Creá una arriba y empezá a armar tus días de entrenamiento
-          </p>
+          <p className="mt-4 font-medium">{t('routines.empty')}</p>
+          <p className="mt-1 text-sm text-dim">{t('routines.emptyHint')}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -111,14 +116,16 @@ export default function Routines() {
                   <p className="mt-1 text-sm text-dim">{routine.description}</p>
                 )}
                 <p className="mt-3 text-xs text-dim2">
-                  {new Date(routine.created_at).toLocaleDateString('es-AR')}
+                  {new Date(routine.created_at).toLocaleDateString(
+                    lang === 'en' ? 'en-US' : 'es-AR',
+                  )}
                 </p>
               </Link>
               <button
                 onClick={() => handleDelete(routine.id, routine.name)}
                 disabled={deleting === routine.id}
                 className="absolute right-3 top-3 flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
-                title="Eliminar rutina"
+                title={t('routines.deleteHint')}
               >
                 ✕
               </button>

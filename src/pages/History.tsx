@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
 import { fetchExportData, fetchSessionSetsWithExercises, fetchSessions } from '@/lib/db'
 import ErrorState from '@/components/ErrorState'
 import type { ExportRow } from '@/lib/db'
 import type { Session, SessionSet } from '@/lib/types'
+import { useLang } from '@/lib/lang-context'
 
 type SessionWithMeta = Session & {
   routine_days: { name: string | null; day_number: number } | null
@@ -22,30 +24,31 @@ function escapeCell(value: string): string {
   return /[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
 }
 
-function buildCSV(rows: ExportRow[]): string {
+function buildCSV(rows: ExportRow[], t: (key: string) => string, lang: 'es' | 'en'): string {
   const header = [
-    'Fecha',
-    'Hora',
-    'Rutina',
-    'Dia',
-    'Ejercicio',
-    'Serie',
-    'Peso_kg',
-    'Reps',
-    'RPE',
-    'Sensacion',
-    'Duracion_min',
+    t('history.csvHeader.Fecha'),
+    t('history.csvHeader.Hora'),
+    t('history.csvHeader.Rutina'),
+    t('history.csvHeader.Dia'),
+    t('history.csvHeader.Ejercicio'),
+    t('history.csvHeader.Serie'),
+    t('history.csvHeader.Peso_kg'),
+    t('history.csvHeader.Reps'),
+    t('history.csvHeader.RPE'),
+    t('history.csvHeader.Sensacion'),
+    t('history.csvHeader.Duracion_min'),
   ]
+  const locale = lang === 'en' ? 'en-US' : 'es-AR'
   const lines = [header.join(';')]
   for (const r of rows) {
     const date = new Date(r.started_at)
     lines.push(
       [
-        date.toLocaleDateString('es-AR'),
-        date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+        date.toLocaleDateString(locale),
+        date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
         r.routine_name ?? '',
         r.day_name ?? '',
-        r.exercise_name ?? '',
+        (lang === 'en' && r.exercise_name_en ? r.exercise_name_en : r.exercise_name) ?? '',
         r.set_number ?? '',
         r.weight_kg ?? '',
         r.reps ?? '',
@@ -69,8 +72,28 @@ function groupBy<T>(items: T[], key: (item: T) => string): Record<string, T[]> {
   return groups
 }
 
+function dateHeaderKey(iso: string): string {
+  return iso.slice(0, 10)
+}
+
+function formatDateHeader(key: string, t: (k: string) => string, lang: 'es' | 'en'): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const date = new Date(key + 'T00:00:00')
+  const diffDays = Math.round((today.getTime() - date.getTime()) / 86400000)
+  if (diffDays === 0) return t('common.today')
+  if (diffDays === 1) return t('common.yesterday')
+  return date.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+}
+
 export default function History() {
   const { user } = useAuth()
+  const { pushToast } = useToast()
+  const { lang, t } = useLang()
   const [sessions, setSessions] = useState<SessionWithMeta[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -84,10 +107,10 @@ export default function History() {
       .then(setSessions)
       .catch((err) => {
         console.error(err)
-        setError('No pudimos cargar tu historial')
+        setError(t('history.loadError'))
       })
       .finally(() => setLoading(false))
-  }, [user])
+  }, [user, t])
 
   useEffect(() => {
     load()
@@ -98,16 +121,17 @@ export default function History() {
     setExporting(true)
     try {
       const rows = await fetchExportData(user.id)
-      const csv = buildCSV(rows)
+      const csv = buildCSV(rows, t, lang)
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `gymtrack-historial-${new Date().toISOString().slice(0, 10)}.csv`
+      a.download = `vekt-historial-${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
       console.error(err)
+      pushToast('error', t('history.exportError'))
     } finally {
       setExporting(false)
     }
@@ -118,11 +142,13 @@ export default function History() {
       <header className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Historial</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('history.title')}</h1>
             <p className="mt-1 text-sm text-dim">
               {sessions.length > 0
-                ? `${sessions.length} ${sessions.length === 1 ? 'sesión registrada' : 'sesiones registradas'}`
-                : 'Todas tus sesiones de entrenamiento'}
+                ? sessions.length === 1
+                  ? t('history.subtitleOne', { n: sessions.length })
+                  : t('history.subtitleMany', { n: sessions.length })
+                : t('history.subtitleEmpty')}
             </p>
           </div>
           {sessions.length > 0 && (
@@ -131,7 +157,7 @@ export default function History() {
               disabled={exporting}
               className="rounded-lg border border-edge bg-surface px-4 py-2 text-sm font-medium text-dim transition-all duration-200 hover:border-emerald-500 hover:text-emerald-400 active:scale-[0.98] disabled:opacity-50"
             >
-              {exporting ? 'Generando...' : '⬇ Exportar CSV'}
+              {exporting ? t('history.exporting') : t('history.export')}
             </button>
           )}
         </div>
@@ -148,16 +174,27 @@ export default function History() {
       ) : sessions.length === 0 ? (
         <div className="mt-16 text-center">
           <div className="text-5xl">🕐</div>
-          <p className="mt-4 font-medium">Todavía no hay sesiones</p>
-          <p className="mt-1 text-sm text-dim">
-            Entrená desde una rutina y aparece acá con todos los detalles
-          </p>
+          <p className="mt-4 font-medium">{t('history.empty')}</p>
+          <p className="mt-1 text-sm text-dim">{t('history.emptyHint')}</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {sessions.map((session) => (
-            <SessionCard key={session.id} session={session} />
-          ))}
+        <div className="space-y-4">
+          {Object.entries(
+            groupBy(sessions, (s) => dateHeaderKey(s.started_at)),
+          )
+            .sort(([a], [b]) => (a < b ? 1 : -1))
+            .map(([dateKey, daySessions]) => (
+              <div key={dateKey}>
+                <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-dim2">
+                  {formatDateHeader(dateKey, t, lang)}
+                </p>
+                <div className="space-y-3">
+                  {daySessions.map((session) => (
+                    <SessionCard key={session.id} session={session} />
+                  ))}
+                </div>
+              </div>
+            ))}
         </div>
       )}
     </div>
@@ -165,6 +202,8 @@ export default function History() {
 }
 
 function SessionCard({ session }: { session: SessionWithMeta }) {
+  const { pushToast } = useToast()
+  const { lang, t } = useLang()
   const [open, setOpen] = useState(false)
   const [sets, setSets] = useState<
     (SessionSet & { exercises: { id: string; name: string; image_url: string | null } })[]
@@ -184,6 +223,7 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
         setSets(rows)
       } catch (err) {
         console.error(err)
+        pushToast('error', t('history.setsLoadError'))
       } finally {
         setLoadingSets(false)
       }
@@ -191,8 +231,10 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
   }
 
   const date = new Date(session.started_at)
+  const locale = lang === 'en' ? 'en-US' : 'es-AR'
   const dayName =
-    session.routine_days?.name ?? (session.routine_days ? `Día ${session.routine_days.day_number}` : '')
+    session.routine_days?.name ??
+    (session.routine_days ? t('day.number', { n: session.routine_days.day_number }) : '')
   const duration = session.duration_minutes
     ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m`
     : '—'
@@ -210,12 +252,12 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
             )}
           </p>
           <p className="mt-0.5 text-xs text-dim2">
-            {date.toLocaleDateString('es-AR', {
+            {date.toLocaleDateString(locale, {
               weekday: 'long',
               day: 'numeric',
               month: 'long',
             })}{' '}
-            · {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+            · {date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -232,10 +274,10 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
       {open && (
         <div className="border-t border-edge">
           {loadingSets ? (
-            <p className="px-4 py-6 text-center text-sm text-dim2">Cargando series...</p>
+            <p className="px-4 py-6 text-center text-sm text-dim2">{t('history.loadingSets')}</p>
           ) : sets.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-dim2">
-              Sin series registradas
+              {t('history.noSets')}
             </p>
           ) : (
             <div className="divide-y divide-edge/60">
@@ -251,19 +293,19 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
                           className="h-8 w-8 rounded-md object-cover"
                         />
                       )}
-                      <p className="text-sm font-medium">{ex?.name ?? 'Ejercicio'}</p>
+                      <p className="text-sm font-medium">{ex?.name ?? t('history.exercise')}</p>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {rows.map((s) => (
                         <span
                           key={s.id}
-                          className={`rounded-md px-2 py-1 font-mono text-xs tabular-nums ${
-                            s.completed
-                              ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20'
-                              : 'bg-surface2 text-dim2 line-through'
-                          }`}
+className={`rounded-md px-2 py-1 font-mono text-xs tabular-nums ${
+  s.completed
+    ? 'bg-surface2 text-soft ring-1 ring-inset ring-edge'
+    : 'bg-surface2 text-dim2 line-through'
+}`}
                         >
-                          {s.weight_kg !== null ? `${s.weight_kg}kg × ${s.reps ?? '-'}` : `${s.reps ?? '-'} reps`}
+                          {s.weight_kg !== null ? `${s.weight_kg}kg × ${s.reps ?? '-'}` : t('history.repsOnly', { n: s.reps ?? '-' })}
                           {s.rpe !== null && ` · RPE ${s.rpe}`}
                         </span>
                       ))}

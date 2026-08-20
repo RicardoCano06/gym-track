@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLang } from '@/lib/lang-context'
 
 interface BodyMapProps {
   onSelectGroup: (group: string) => void
@@ -6,25 +7,25 @@ interface BodyMapProps {
 }
 
 const FRONT_REGIONS = [
-  { id: 'hombros', label: 'Hombros', x: 28, y: 18, w: 14, h: 8 },
-  { id: 'pecho', label: 'Pectorales', x: 42, y: 22, w: 16, h: 10 },
-  { id: 'brazos', label: 'Bíceps', x: 18, y: 28, w: 10, h: 10 },
-  { id: 'core', label: 'Abdomen', x: 42, y: 34, w: 16, h: 12 },
-  { id: 'core', label: 'Oblicuos', x: 34, y: 36, w: 8, h: 10 },
-  { id: 'brazos', label: 'Antebrazo', x: 14, y: 40, w: 10, h: 10 },
-  { id: 'pierna', label: 'Abductores', x: 36, y: 52, w: 10, h: 12 },
-  { id: 'pierna', label: 'Aductores', x: 46, y: 52, w: 10, h: 12 },
-  { id: 'pierna', label: 'Cuádriceps', x: 38, y: 64, w: 12, h: 16 },
+  { id: 'hombros', key: 'body.hombros', x: 28, y: 18, w: 14, h: 8 },
+  { id: 'pecho', key: 'body.pecho', x: 42, y: 22, w: 16, h: 10 },
+  { id: 'brazos', key: 'body.brazos', x: 18, y: 28, w: 10, h: 10 },
+  { id: 'core', key: 'body.core', x: 42, y: 34, w: 16, h: 12 },
+  { id: 'core', key: 'body.oblicuos', x: 34, y: 36, w: 8, h: 10 },
+  { id: 'brazos', key: 'body.antebrazo', x: 14, y: 40, w: 10, h: 10 },
+  { id: 'pierna', key: 'body.abductores', x: 36, y: 52, w: 10, h: 12 },
+  { id: 'pierna', key: 'body.aductores', x: 46, y: 52, w: 10, h: 12 },
+  { id: 'pierna', key: 'body.cuadriceps', x: 38, y: 64, w: 12, h: 16 },
 ]
 
 const BACK_REGIONS = [
-  { id: 'espalda', label: 'Trapecio', x: 40, y: 16, w: 18, h: 8 },
-  { id: 'brazos', label: 'Tríceps', x: 18, y: 26, w: 10, h: 10 },
-  { id: 'espalda', label: 'Dorsales', x: 38, y: 24, w: 18, h: 14 },
-  { id: 'espalda', label: 'Lumbar', x: 42, y: 38, w: 14, h: 10 },
-  { id: 'pierna', label: 'Glúteos', x: 38, y: 48, w: 18, h: 10 },
-  { id: 'pierna', label: 'Isquiotibiales', x: 38, y: 60, w: 12, h: 14 },
-  { id: 'pierna', label: 'Pantorrillas', x: 40, y: 76, w: 10, h: 12 },
+  { id: 'espalda', key: 'body.trapecio', x: 40, y: 16, w: 18, h: 8 },
+  { id: 'brazos', key: 'body.triceps', x: 18, y: 26, w: 10, h: 10 },
+  { id: 'espalda', key: 'body.dorsales', x: 38, y: 24, w: 18, h: 14 },
+  { id: 'espalda', key: 'body.lumbar', x: 42, y: 38, w: 14, h: 10 },
+  { id: 'pierna', key: 'body.gluteos', x: 38, y: 48, w: 18, h: 10 },
+  { id: 'pierna', key: 'body.isquiotibiales', x: 38, y: 60, w: 12, h: 14 },
+  { id: 'pierna', key: 'body.pantorrillas', x: 40, y: 76, w: 10, h: 12 },
 ]
 
 function BodyOutline() {
@@ -38,6 +39,7 @@ function BodyOutline() {
 
 export default function BodyMap({ onSelectGroup, selectedGroup }: BodyMapProps) {
   const [view, setView] = useState<'front' | 'back'>('front')
+  const { t } = useLang()
   const regions = view === 'front' ? FRONT_REGIONS : BACK_REGIONS
 
   return (
@@ -67,7 +69,7 @@ export default function BodyMap({ onSelectGroup, selectedGroup }: BodyMapProps) 
                 dominantBaseline="central"
                 className="pointer-events-none select-none fill-current text-[3.2px] font-medium"
               >
-                {r.label}
+                {t(r.key)}
               </text>
             </g>
           ))}
@@ -85,7 +87,7 @@ export default function BodyMap({ onSelectGroup, selectedGroup }: BodyMapProps) 
             clipRule="evenodd"
           />
         </svg>
-        Girar
+        {t('body.flip')}
       </button>
     </div>
   )

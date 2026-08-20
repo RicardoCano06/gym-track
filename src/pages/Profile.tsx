@@ -2,29 +2,33 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
+import { useConfirm } from '@/lib/use-confirm'
 import {
   fetchBodyMetrics,
   fetchUserProfile,
   saveBodyMetric,
   saveUserProfile,
 } from '@/lib/db'
-import { computeBMI, getRecommendations } from '@/lib/recommendations'
+import { computeBMI, bmiLabel, getRecommendations } from '@/lib/recommendations'
 import type { BMIResult } from '@/lib/recommendations'
 import type { BodyMetric, Goal, Level, Sex, UserProfile } from '@/lib/types'
+import { useLang } from '@/lib/lang-context'
+import ThemeToggle from '@/components/ThemeToggle'
+import LanguageToggle from '@/components/LanguageToggle'
 
 const LEVELS: Level[] = ['principiante', 'intermedio', 'avanzado']
 const GOALS: Goal[] = ['perder_grasa', 'ganar_masa', 'mantener']
 
-const LEVEL_LABELS: Record<Level, string> = {
-  principiante: 'Principiante',
-  intermedio: 'Intermedio',
-  avanzado: 'Avanzado',
+const LEVEL_KEYS: Record<Level, string> = {
+  principiante: 'profile.levelPrincipiante',
+  intermedio: 'profile.levelIntermedio',
+  avanzado: 'profile.levelAvanzado',
 }
 
-const GOAL_LABELS: Record<Goal, string> = {
-  perder_grasa: 'Perder grasa',
-  ganar_masa: 'Ganar masa muscular',
-  mantener: 'Mantener',
+const GOAL_KEYS: Record<Goal, string> = {
+  perder_grasa: 'profile.goalLose',
+  ganar_masa: 'profile.goalGain',
+  mantener: 'profile.goalMaintain',
 }
 
 const CATEGORY_STYLES: Record<BMIResult['category'], string> = {
@@ -36,6 +40,8 @@ const CATEGORY_STYLES: Record<BMIResult['category'], string> = {
 
 export default function Profile() {
   const { user } = useAuth()
+  const { ask, dialog } = useConfirm()
+  const { lang, t } = useLang()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [metrics, setMetrics] = useState<BodyMetric[]>([])
   const [loading, setLoading] = useState(true)
@@ -82,12 +88,15 @@ export default function Profile() {
   const recommendations = useMemo(() => {
     const effectiveLevel = profile?.level ?? level
     const effectiveGoal = profile?.goal ?? goal
-    return getRecommendations({
-      bmi: bmi?.bmi ?? null,
-      level: effectiveLevel,
-      goal: effectiveGoal,
-    })
-  }, [bmi, profile, level, goal])
+    return getRecommendations(
+      {
+        bmi: bmi?.bmi ?? null,
+        level: effectiveLevel,
+        goal: effectiveGoal,
+      },
+      lang,
+    )
+  }, [bmi, profile, level, goal, lang])
 
   async function handleSaveProfile(e: FormEvent) {
     e.preventDefault()
@@ -97,14 +106,14 @@ export default function Profile() {
 
     const heightNum = parseFloat(height.replace(',', '.'))
     if (Number.isNaN(heightNum) || heightNum < 100 || heightNum > 250) {
-      setProfileError('La altura debe estar entre 100 y 250 cm')
+      setProfileError(t('profile.heightError'))
       return
     }
     let ageNum: number | null = null
     if (age.trim()) {
       ageNum = parseInt(age, 10)
       if (Number.isNaN(ageNum) || ageNum < 10 || ageNum > 120) {
-        setProfileError('La edad debe estar entre 10 y 120 años')
+        setProfileError(t('profile.ageError'))
         return
       }
     }
@@ -122,7 +131,7 @@ export default function Profile() {
       setProfileSaved(true)
     } catch (err) {
       console.error(err)
-      setProfileError('No se pudo guardar el perfil. Probá de nuevo.')
+      setProfileError(t('profile.saveError'))
     } finally {
       setProfileSaving(false)
     }
@@ -135,7 +144,7 @@ export default function Profile() {
 
     const weightNum = parseFloat(weight.replace(',', '.'))
     if (Number.isNaN(weightNum) || weightNum <= 0 || weightNum > 500) {
-      setWeightError('Ingresá un peso válido (en kg)')
+      setWeightError(t('profile.weightError'))
       return
     }
 
@@ -150,7 +159,7 @@ export default function Profile() {
       setWeightNotes('')
     } catch (err) {
       console.error(err)
-      setWeightError('No se pudo registrar el peso. Probá de nuevo.')
+      setWeightError(t('profile.weightSaveError'))
     } finally {
       setWeightSaving(false)
     }
@@ -168,21 +177,25 @@ export default function Profile() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Perfil</h1>
-        <p className="mt-1 text-sm text-dim">
-          Tus datos corporales y recomendaciones de entrenamiento
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t('profile.title')}</h1>
+          <p className="mt-1 text-sm text-dim">{t('profile.subtitle')}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <section className="card-hairline glass-card rounded-2xl p-5">
-            <h2 className="mb-4 font-semibold">Datos del perfil</h2>
+            <h2 className="mb-4 font-semibold">{t('profile.data')}</h2>
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-sm text-dim">Altura (cm)</label>
+                  <label className="mb-1.5 block text-sm text-dim">{t('profile.height')}</label>
                   <input
                     type="number"
                     inputMode="decimal"
@@ -196,7 +209,7 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm text-dim">Edad</label>
+                  <label className="mb-1.5 block text-sm text-dim">{t('profile.age')}</label>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -211,21 +224,21 @@ export default function Profile() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm text-dim">Sexo</label>
+                <label className="mb-1.5 block text-sm text-dim">{t('profile.sex')}</label>
                 <select
                   value={sex}
                   onChange={(e) => setSex(e.target.value as Sex | '')}
                   className="w-full rounded-lg border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-emerald-500"
                 >
-                  <option value="">Prefiero no decirlo</option>
-                  <option value="male">Masculino</option>
-                  <option value="female">Femenino</option>
-                  <option value="other">Otro</option>
+                  <option value="">{t('profile.sexUndefined')}</option>
+                  <option value="male">{t('profile.male')}</option>
+                  <option value="female">{t('profile.female')}</option>
+                  <option value="other">{t('profile.other')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm text-dim">Nivel de experiencia</label>
+                <label className="mb-1.5 block text-sm text-dim">{t('profile.level')}</label>
                 <select
                   value={level}
                   onChange={(e) => setLevel(e.target.value as Level)}
@@ -233,14 +246,14 @@ export default function Profile() {
                 >
                   {LEVELS.map((l) => (
                     <option key={l} value={l}>
-                      {LEVEL_LABELS[l]}
+                      {t(LEVEL_KEYS[l])}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm text-dim">Objetivo</label>
+                <label className="mb-1.5 block text-sm text-dim">{t('profile.goal')}</label>
                 <select
                   value={goal}
                   onChange={(e) => setGoal(e.target.value as Goal)}
@@ -248,7 +261,7 @@ export default function Profile() {
                 >
                   {GOALS.map((g) => (
                     <option key={g} value={g}>
-                      {GOAL_LABELS[g]}
+                      {t(GOAL_KEYS[g])}
                     </option>
                   ))}
                 </select>
@@ -261,7 +274,7 @@ export default function Profile() {
               )}
               {profileSaved && (
                 <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
-                  Perfil guardado
+                  {t('profile.saved')}
                 </p>
               )}
 
@@ -270,19 +283,17 @@ export default function Profile() {
                 disabled={profileSaving}
                 className="w-full rounded-lg bg-emerald-500 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400 disabled:opacity-60"
               >
-                {profileSaving ? 'Guardando...' : 'Guardar perfil'}
+                {profileSaving ? t('profile.saving') : t('profile.save')}
               </button>
             </form>
           </section>
 
           <section className="card-hairline glass-card rounded-2xl p-5">
-            <h2 className="mb-1 font-semibold">Registrar peso</h2>
-            <p className="mb-4 text-sm text-dim">
-              Registrá tu peso hoy para calcular tu IMC y seguir tu evolución
-            </p>
+            <h2 className="mb-1 font-semibold">{t('profile.weight')}</h2>
+            <p className="mb-4 text-sm text-dim">{t('profile.weightHint')}</p>
             <form onSubmit={handleSaveWeight} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm text-dim">Peso (kg)</label>
+                <label className="mb-1.5 block text-sm text-dim">{t('profile.weightKg')}</label>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -297,12 +308,12 @@ export default function Profile() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-dim">Nota (opcional)</label>
+                <label className="mb-1.5 block text-sm text-dim">{t('profile.note')}</label>
                 <input
                   type="text"
                   value={weightNotes}
                   onChange={(e) => setWeightNotes(e.target.value)}
-                  placeholder="Ej: pesado por la mañana"
+                  placeholder={t('profile.notePlaceholder')}
                   className="w-full rounded-xl border border-edge2 bg-bg px-3.5 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
@@ -318,7 +329,7 @@ export default function Profile() {
                 disabled={weightSaving || !weight.trim()}
                 className="w-full rounded-lg bg-emerald-500 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400 disabled:opacity-50"
               >
-                {weightSaving ? 'Guardando...' : 'Registrar peso de hoy'}
+                {weightSaving ? t('profile.saving') : t('profile.saveWeight')}
               </button>
             </form>
           </section>
@@ -326,7 +337,7 @@ export default function Profile() {
 
         <div className="space-y-4">
           <section className="card-hairline glass-card rounded-2xl p-5">
-            <h2 className="mb-4 font-semibold">Tu IMC</h2>
+            <h2 className="mb-4 font-semibold">{t('profile.bmi')}</h2>
             {bmi ? (
               <>
                 <div className="flex items-end gap-3">
@@ -336,19 +347,19 @@ export default function Profile() {
                   <span
                     className={`mb-1 rounded-full border px-3 py-1 text-sm font-medium ${CATEGORY_STYLES[bmi.category]}`}
                   >
-                    {bmi.label}
+                    {bmiLabel(bmi.category, lang)}
                   </span>
                 </div>
                 <BmiScale bmi={bmi.bmi} />
                 <p className="mt-2 text-xs text-dim2">
-                  Último peso registrado: {metrics[0]?.weight_kg} kg el{' '}
-                  {formatDate(metrics[0]?.date)}
+                  {t('profile.lastWeight', {
+                    weight: String(metrics[0]?.weight_kg ?? '—'),
+                    date: formatDate(metrics[0]?.date, lang),
+                  })}
                 </p>
               </>
             ) : (
-              <p className="text-sm text-dim">
-                Completá tu altura en el perfil y registrá al menos un peso para calcular tu IMC.
-              </p>
+              <p className="text-sm text-dim">{t('profile.bmiHint')}</p>
             )}
           </section>
 
@@ -365,18 +376,16 @@ export default function Profile() {
           </section>
 
           <section className="card-hairline glass-card rounded-2xl p-5">
-            <h2 className="mb-4 font-semibold">Historial de peso</h2>
+            <h2 className="mb-4 font-semibold">{t('profile.weightHistory')}</h2>
             {metrics.length === 0 ? (
-              <p className="text-sm text-dim">
-                Todavía no registraste pesos. Registrá tu primer peso arriba.
-              </p>
+              <p className="text-sm text-dim">{t('profile.noWeights')}</p>
             ) : (
               <>
-                <WeightSparkline metrics={metrics} />
+                <WeightSparkline metrics={metrics} lang={lang} />
                 <div className="mt-4 divide-y divide-edge">
                   {metrics.slice(0, 14).map((m) => (
                     <div key={m.id} className="flex items-center justify-between py-2 text-sm">
-                      <span className="text-dim">{formatDate(m.date)}</span>
+                      <span className="text-dim">{formatDate(m.date, lang)}</span>
                       <span className="font-mono font-medium tabular-nums">{m.weight_kg} kg</span>
                     </div>
                   ))}
@@ -389,12 +398,23 @@ export default function Profile() {
 
       <div className="mt-8 border-t border-edge pt-6">
         <button
-          onClick={() => supabase.auth.signOut()}
+          onClick={() =>
+            ask({
+              title: t('profile.logoutTitle'),
+              message: t('profile.logoutMessage'),
+              confirmLabel: t('profile.logout'),
+              danger: true,
+              onConfirm: async () => {
+                await supabase.auth.signOut()
+              },
+            })
+          }
           className="min-h-12 w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20 active:scale-[0.99] md:hidden"
         >
-          Cerrar sesión
+          {t('profile.logout')}
         </button>
       </div>
+      {dialog}
     </div>
   )
 }
@@ -428,7 +448,14 @@ function BmiScale({ bmi }: { bmi: number }) {
   )
 }
 
-function WeightSparkline({ metrics }: { metrics: BodyMetric[] }) {
+function WeightSparkline({
+  metrics,
+  lang,
+}: {
+  metrics: BodyMetric[]
+  lang: 'es' | 'en'
+}) {
+  const t = useLang().t
   const points = metrics
     .slice()
     .reverse()
@@ -436,11 +463,7 @@ function WeightSparkline({ metrics }: { metrics: BodyMetric[] }) {
     .slice(-14)
 
   if (points.length < 2) {
-    return (
-      <p className="text-sm text-dim">
-        Registrá al menos 2 pesos para ver tu evolución.
-      </p>
-    )
+    return <p className="text-sm text-dim">{t('profile.minWeights')}</p>
   }
 
   const weights = points.map((p) => p.weight_kg)
@@ -465,17 +488,20 @@ function WeightSparkline({ metrics }: { metrics: BodyMetric[] }) {
       </svg>
       <div className="mt-1 flex justify-between text-xs text-dim2">
         <span>
-          {formatDate(points[0].date)} · {points[0].weight_kg} kg
+          {formatDate(points[0].date, lang)} · {points[0].weight_kg} kg
         </span>
         <span>
-          {points[points.length - 1].weight_kg} kg · {formatDate(points[points.length - 1].date)}
+          {points[points.length - 1].weight_kg} kg · {formatDate(points[points.length - 1].date, lang)}
         </span>
       </div>
     </div>
   )
 }
 
-function formatDate(date: string | undefined): string {
+function formatDate(date: string | undefined, lang: 'es' | 'en'): string {
   if (!date) return '—'
-  return new Date(date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+  return new Date(date).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-AR', {
+    day: 'numeric',
+    month: 'short',
+  })
 }

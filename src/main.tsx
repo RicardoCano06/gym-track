@@ -12,7 +12,17 @@ if (theme === 'light') {
   document.documentElement.classList.add('light')
 }
 
+let lang = 'es'
+try {
+  lang = localStorage.getItem('gymtrack-lang') ?? 'es'
+} catch {
+  // almacenamiento no disponible: se usa el español
+}
+document.documentElement.lang = lang
+
 const rootEl = document.getElementById('root')!
+
+const isEn = lang === 'en'
 
 function renderSetupError(title: string, detail: string) {
   rootEl.innerHTML = `
@@ -29,8 +39,10 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
 if (!url || !anonKey) {
   renderSetupError(
-    'GymTrack no puede iniciar',
-    'Faltan las variables de entorno <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code>. Definilas en el entorno de build (Cloudflare → gym-track → Settings → Variables and Secrets) y volvé a desplegar.',
+    isEn ? 'Vekt cannot start' : 'Vekt no puede iniciar',
+    isEn
+      ? 'The environment variables <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> are missing. Define them in the build environment (Cloudflare → gym-track → Settings → Variables and Secrets) and redeploy.'
+      : 'Faltan las variables de entorno <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code>. Definilas en el entorno de build (Cloudflare → gym-track → Settings → Variables and Secrets) y volvé a desplegar.',
   )
 } else {
   try {
@@ -42,8 +54,8 @@ if (!url || !anonKey) {
     )
   } catch (err) {
     renderSetupError(
-      'GymTrack no puede iniciar',
-      'Ocurrió un error al cargar la aplicación: <code>' +
+      isEn ? 'Vekt cannot start' : 'Vekt no puede iniciar',
+      (isEn ? 'An error occurred while loading the app: <code>' : 'Ocurrió un error al cargar la aplicación: <code>') +
         (err instanceof Error ? err.message : String(err)) +
         '</code>',
     )

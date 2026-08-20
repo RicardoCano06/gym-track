@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLang } from '@/lib/lang-context'
 
 export interface ConfirmRequest {
   title: string
@@ -21,11 +22,15 @@ export function Dialog({
   onCancel,
 }: DialogProps) {
   const [busy, setBusy] = useState(false)
+  const { t } = useLang()
 
   async function handleConfirm() {
     setBusy(true)
     try {
       await onConfirm()
+    } catch {
+      // La página ya mostró el error (toast); el diálogo queda abierto para
+      // reintentar sin tirar una promesa sin manejar.
     } finally {
       setBusy(false)
     }
@@ -48,7 +53,7 @@ export function Dialog({
             disabled={busy}
             className="min-h-12 rounded-xl border border-edge2 bg-surface2 px-4 py-3 text-sm font-medium text-soft transition-all duration-200 hover:text-strong disabled:opacity-50 active:scale-[0.98]"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
@@ -59,7 +64,7 @@ export function Dialog({
                 : 'bg-emerald-500 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:bg-emerald-400'
             }`}
           >
-            {busy ? 'Un momento...' : confirmLabel}
+            {busy ? t('dialog.busy') : confirmLabel}
           </button>
         </div>
       </div>

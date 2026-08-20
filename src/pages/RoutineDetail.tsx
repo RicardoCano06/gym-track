@@ -14,10 +14,13 @@ import {
   updateRoutineExercise,
 } from '@/lib/db'
 import type { Exercise, Routine, RoutineDay, RoutineExercise } from '@/lib/types'
+import { displayName } from '@/lib/i18n'
+import { useLang } from '@/lib/lang-context'
 
 export default function RoutineDetail() {
   const { id } = useParams()
   const { pushToast } = useToast()
+  const { lang, t } = useLang()
   const [routine, setRoutine] = useState<Routine | null>(null)
   const [days, setDays] = useState<RoutineDay[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,6 +54,7 @@ export default function RoutineDetail() {
       setNewDayName('')
     } catch (err) {
       console.error(err)
+      pushToast('error', t('rdetail.addDayError'))
     } finally {
       setSaving(false)
     }
@@ -60,13 +64,26 @@ export default function RoutineDetail() {
     day: RoutineDay,
     patch: Partial<Pick<RoutineDay, 'name'>>,
   ) {
-    await updateDay(day.id, patch)
-    await refresh()
+    try {
+      await updateDay(day.id, patch)
+      await refresh()
+    } catch (err) {
+      console.error(err)
+      pushToast('error', t('rdetail.renameError'))
+      throw err
+    }
   }
 
   async function handleDeleteDay(day: RoutineDay) {
-    await deleteDay(day.id)
-    await refresh()
+    try {
+      await deleteDay(day.id)
+      await refresh()
+      pushToast('success', t('rdetail.dayDeleted'))
+    } catch (err) {
+      console.error(err)
+      pushToast('error', t('rdetail.deleteError'))
+      throw err
+    }
   }
 
   function handleRemoveExercise(re: RoutineExercise) {
@@ -78,26 +95,32 @@ export default function RoutineDetail() {
       ),
     )
     enqueueDelayed('routine_exercise_remove', { id: re.id }, 4000)
-    pushToast('info', `"${re.exercise?.name ?? 'Ejercicio'}" quitado`, {
-      label: 'Deshacer',
-      onClick: () => {
-        dequeue((op) => op.kind === 'routine_exercise_remove' && op.payload.id === re.id)
-        setDays((prev) =>
-          prev.map((d) => {
-            if (d.id !== re.day_id) return d
-            if ((d.exercises ?? []).some((x) => x.id === re.id)) return d
-            const ex = d.exercises ?? []
-            const pos = re.position ?? ex.length + 1
-            const at = ex.findIndex((x) => (x.position ?? 0) > pos)
-            const next = [...ex]
-            if (at < 0) next.push(re)
-            else next.splice(at, 0, re)
-            return { ...d, exercises: next }
-          }),
-        )
-        pushToast('success', 'Ejercicio restaurado')
+    pushToast(
+      'info',
+      t('rdetail.removed', {
+        name: re.exercise ? displayName(re.exercise, lang) : t('day.exercise'),
+      }),
+      {
+        label: t('rdetail.undo'),
+        onClick: () => {
+          dequeue((op) => op.kind === 'routine_exercise_remove' && op.payload.id === re.id)
+          setDays((prev) =>
+            prev.map((d) => {
+              if (d.id !== re.day_id) return d
+              if ((d.exercises ?? []).some((x) => x.id === re.id)) return d
+              const ex = d.exercises ?? []
+              const pos = re.position ?? ex.length + 1
+              const at = ex.findIndex((x) => (x.position ?? 0) > pos)
+              const next = [...ex]
+              if (at < 0) next.push(re)
+              else next.splice(at, 0, re)
+              return { ...d, exercises: next }
+            }),
+          )
+          pushToast('success', t('rdetail.restored'))
+        },
       },
-    })
+    )
   }
 
   async function handleAddExercise(day: RoutineDay, exercise: Exercise) {
@@ -107,7 +130,7 @@ export default function RoutineDetail() {
       await refresh()
     } catch (err) {
       console.error(err)
-      pushToast('error', 'No se pudo agregar el ejercicio.')
+      pushToast('error', t('rdetail.addError'))
     }
   }
 
@@ -133,6 +156,7 @@ export default function RoutineDetail() {
       await refresh()
     } catch (err) {
       console.error(err)
+      pushToast('error', t('rdetail.supersetError'))
     }
   }
 
@@ -149,12 +173,12 @@ export default function RoutineDetail() {
   if (!routine) {
     return (
       <div className="mt-16 text-center">
-        <p className="mt-4 font-medium">No se encontró la rutina</p>
+        <p className="mt-4 font-medium">{t('rdetail.notFound')}</p>
         <Link
           to="/rutinas"
           className="mt-4 inline-block text-sm text-emerald-400 hover:underline"
         >
-          ← Volver a rutinas
+          {t('rdetail.back')}
         </Link>
       </div>
     )
@@ -166,11 +190,14 @@ export default function RoutineDetail() {
         to="/rutinas"
         className="mb-4 inline-flex items-center gap-1 text-sm text-dim transition-colors hover:text-emerald-400"
       >
-        ← Volver a rutinas
+        {t('rdetail.back')}
       </Link>
       <h1 className="text-2xl font-bold tracking-tight">{routine.name}</h1>
       <p className="mt-1 text-sm text-dim">
-        {days.length} {days.length === 1 ? 'día' : 'días'} de entrenamiento
+        {t('rdetail.days', {
+          n: days.length,
+          noun: days.length === 1 ? t('rdetail.dayOne') : t('rdetail.daysMany'),
+        })}
       </p>
 
       <form onSubmit={handleAddDay} className="mt-6 space-y-3">
@@ -179,7 +206,7 @@ export default function RoutineDetail() {
             type="text"
             value={newDayName}
             onChange={(e) => setNewDayName(e.target.value)}
-            placeholder="Nombre del día (ej: Push, Pull, Pierna...)"
+            placeholder={t('rdetail.dayNamePlaceholder')}
             className="flex-1 rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-dim2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
           />
           <button
@@ -187,7 +214,7 @@ export default function RoutineDetail() {
             disabled={saving || !newDayName.trim()}
             className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50"
           >
-            Agregar día
+            {t('rdetail.addDay')}
           </button>
         </div>
       </form>
@@ -195,7 +222,7 @@ export default function RoutineDetail() {
       <div className="mt-6 space-y-6">
         {days.length === 0 && (
           <p className="mt-10 text-center text-sm text-dim2">
-            Agregá tu primer día de entrenamiento arriba
+            {t('rdetail.firstDay')}
           </p>
         )}
         {days.map((day) => (

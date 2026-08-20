@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { getPendingCount, isSyncPaused, subscribeSync } from '@/lib/sync'
+import { useLang } from '@/lib/lang-context'
 
 export default function SyncStatus() {
   const [pending, setPending] = useState(getPendingCount())
   const [paused, setPaused] = useState(isSyncPaused())
   const [online, setOnline] = useState(() => navigator.onLine)
+  const { t } = useLang()
 
   useEffect(() => {
     const unsubscribe = subscribeSync(() => {
@@ -24,11 +26,13 @@ export default function SyncStatus() {
 
   if (online && !paused && pending === 0) return null
 
+  const pendingText = pending > 0 ? t('sync.pendingCount', { text: t('sync.pending', { n: pending }) }) : ''
+
   const label = !online
-    ? `Sin conexión${pending > 0 ? ` · ${pending} pendiente${pending === 1 ? '' : 's'}` : ''}`
+    ? `${t('sync.offline')}${pendingText}`
     : paused && pending > 0
-      ? `Sesión pausada · ${pending} pendiente${pending === 1 ? '' : 's'}`
-      : `Sincronizando · ${pending} pendiente${pending === 1 ? '' : 's'}`
+      ? `${t('sync.paused')}${pendingText}`
+      : `${t('sync.syncing')}${pendingText}`
 
   return (
     <span

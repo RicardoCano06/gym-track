@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { ExerciseProgressEntry } from '@/lib/db'
 import { formatShortDate } from '@/lib/format'
+import { useLang } from '@/lib/lang-context'
 
 export function ProgressChart({ series }: { series: ExerciseProgressEntry[] }) {
   const [hovered, setHovered] = useState<number | null>(null)
+  const { lang } = useLang()
   const weights = series.map((e) => e.weight_kg ?? 0)
   const min = Math.min(...weights)
   const max = Math.max(...weights)
@@ -24,10 +26,21 @@ export function ProgressChart({ series }: { series: ExerciseProgressEntry[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
         <defs>
           <linearGradient id="progress-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
             <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
           </linearGradient>
         </defs>
+        {[0.25, 0.5, 0.75].map((t) => (
+          <line
+            key={t}
+            x1={0}
+            x2={W}
+            y1={pad + t * (H - pad * 2)}
+            y2={pad + t * (H - pad * 2)}
+            className="stroke-edge"
+            strokeWidth={1}
+          />
+        ))}
         <polygon points={area} fill="url(#progress-area)" />
         <polyline
           points={line}
@@ -35,7 +48,6 @@ export function ProgressChart({ series }: { series: ExerciseProgressEntry[] }) {
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ filter: 'drop-shadow(0 0 4px rgba(16,185,129,0.4))' }}
         />
         {coords.map(([x, y], i) => {
           const active = hovered === i
@@ -51,9 +63,8 @@ export function ProgressChart({ series }: { series: ExerciseProgressEntry[] }) {
                 cy={y}
                 r={active ? 6 : 3.5}
                 className="fill-emerald-500 transition-all duration-150"
-                style={{ filter: active ? 'drop-shadow(0 0 6px rgba(16,185,129,0.8))' : 'none' }}
               />
-              <circle cx={x} cy={y} r={12} className="fill-transparent" />
+              <circle cx={x} cy={y} r={22} className="fill-transparent" />
               {active && (
                 <>
                   <line
@@ -85,10 +96,10 @@ export function ProgressChart({ series }: { series: ExerciseProgressEntry[] }) {
       </svg>
       <div className="mt-1 flex justify-between text-xs text-dim2">
         <span className="font-mono tabular-nums">
-          {formatShortDate(series[0].date)} · {series[0].weight_kg} kg
+          {formatShortDate(series[0].date, lang)} · {series[0].weight_kg} kg
         </span>
         <span className="font-mono tabular-nums">
-          {series[series.length - 1].weight_kg} kg · {formatShortDate(series[series.length - 1].date)}
+          {series[series.length - 1].weight_kg} kg · {formatShortDate(series[series.length - 1].date, lang)}
         </span>
       </div>
     </div>

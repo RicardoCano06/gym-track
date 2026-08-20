@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import BottomSheet from '@/components/BottomSheet'
 import ErrorState from '@/components/ErrorState'
@@ -21,13 +22,15 @@ import {
 } from '@/lib/db'
 import { enqueue, genId } from '@/lib/sync'
 import type { RoutineDay, RoutineExercise, Session, SessionSet } from '@/lib/types'
+import { displayName } from '@/lib/i18n'
+import { useLang } from '@/lib/lang-context'
 
 const RPE_OPTIONS = ['', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10']
 const FEELINGS = [
-  { value: 2, label: '😩', text: 'Muy duro' },
-  { value: 5, label: '😐', text: 'Regular' },
-  { value: 7, label: '🙂', text: 'Bien' },
-  { value: 9, label: '😁', text: 'Excelente' },
+  { value: 2, label: '😩', textKey: 'train.feelVeryHard' },
+  { value: 5, label: '😐', textKey: 'train.feelOkay' },
+  { value: 7, label: '🙂', textKey: 'train.feelGood' },
+  { value: 9, label: '😁', textKey: 'train.feelGreat' },
 ]
 
 export default function Train() {
@@ -36,6 +39,7 @@ export default function Train() {
   const navigate = useNavigate()
   const { pushToast } = useToast()
   const { ask, dialog } = useConfirm()
+  const { t } = useLang()
 
   const [day, setDay] = useState<RoutineDay | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -94,7 +98,7 @@ export default function Train() {
         setSetsByEx(map)
       } catch (err) {
         console.error(err)
-        setLoadError('No pudimos iniciar la sesión')
+        setLoadError(t('train.loadError'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -102,7 +106,7 @@ export default function Train() {
     return () => {
       cancelled = true
     }
-  }, [user, dayId])
+  }, [user, dayId, t])
 
   useEffect(() => {
     load()
@@ -273,8 +277,11 @@ export default function Train() {
     }
     try {
       await deleteSessionSet(row.id)
+      pushToast('success', t('train.setDeleted'))
     } catch (err) {
       console.error(err)
+      pushToast('error', t('train.setDeleteError'))
+      throw err
     }
   }
 
@@ -288,7 +295,7 @@ export default function Train() {
         Math.max(1, Math.round(elapsedMinutes)),
         feeling,
       )
-      pushToast('success', 'Entrenamiento guardado')
+      pushToast('success', t('train.saved'))
       navigate('/historial')
     } catch (err) {
       console.error(err)
@@ -301,11 +308,11 @@ export default function Train() {
     cancelPending()
     try {
       await deleteSession(session.id)
-      pushToast('info', 'Sesión descartada')
+      pushToast('info', t('train.discarded'))
       navigate('/rutinas')
     } catch (err) {
       console.error(err)
-      pushToast('error', 'No se pudo descartar la sesión')
+      pushToast('error', t('train.discardError'))
     }
   }
 
@@ -321,19 +328,19 @@ export default function Train() {
   }
 
   if (loadError) {
-    return <ErrorState title="No se pudo iniciar la sesión" message={loadError} onRetry={load} />
+    return <ErrorState title={t('train.loadErrorTitle')} message={loadError} onRetry={load} />
   }
 
   if (!day || !session) {
     return (
       <div className="mt-16 text-center">
         <div className="text-5xl">🤔</div>
-        <p className="mt-4 font-medium">No se pudo iniciar la sesión</p>
+        <p className="mt-4 font-medium">{t('train.notFound')}</p>
         <Link
           to="/rutinas"
           className="mt-4 inline-block text-sm text-emerald-400 hover:underline"
         >
-          ← Volver a rutinas
+          {t('train.backRoutines')}
         </Link>
       </div>
     )
@@ -358,13 +365,13 @@ export default function Train() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wider text-dim2">
-            Sesión activa
+            {t('train.activeSession')}
           </p>
           <h1 className="text-2xl font-bold tracking-tight">
-            {day.name ?? `Día ${day.day_number}`}
+            {day.name ?? t('day.number', { n: day.day_number })}
           </h1>
           {day.weekday && (
-            <span className="mt-1 inline-block rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-400">
+            <span className="mt-1 inline-block rounded-full border border-edge bg-surface2 px-2.5 py-0.5 text-xs text-dim">
               {day.weekday.charAt(0).toUpperCase() + day.weekday.slice(1)}
             </span>
           )}
@@ -373,19 +380,18 @@ export default function Train() {
           <button
             onClick={() =>
               ask({
-                title: 'Descartar sesión',
-                message:
-                  'Se borrará esta sesión y todo lo registrado sin guardar. Esta acción no se puede deshacer.',
-                confirmLabel: 'Descartar',
+                title: t('train.discardTitle'),
+                message: t('train.discardMessage'),
+                confirmLabel: t('train.discard'),
                 danger: true,
                 onConfirm: handleDiscard,
               })
             }
             className="min-h-11 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 transition-all duration-200 hover:bg-red-500/10 active:scale-95"
           >
-            Descartar
+            {t('train.discard')}
           </button>
-          <span className="rounded-full border border-edge bg-surface px-3 py-1.5 font-mono text-sm font-bold tabular-nums text-emerald-400 shadow-[0_0_14px_rgba(16,185,129,0.15)]">
+          <span className="rounded-full border border-edge bg-surface px-3 py-1.5 font-mono text-sm font-bold tabular-nums text-soft">
             ⏱ {Math.floor(elapsedMinutes / 60)}h {elapsedMinutes % 60}m
           </span>
         </div>
@@ -407,9 +413,9 @@ export default function Train() {
               >
                 <div className="flex items-center justify-between border-b border-edge bg-surface2/60 px-4 py-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-dim2">
-                    ↔ Superset · A/B
+                    {t('train.superset')}
                   </span>
-                  <span className="text-xs text-dim2">Alterná los ejercicios sin descanso entre series</span>
+                  <span className="text-xs text-dim2">{t('train.supersetHint')}</span>
                 </div>
                 <div className="grid gap-px bg-edge/60 sm:grid-cols-2">
                   {group.map((g) => (
@@ -456,48 +462,53 @@ export default function Train() {
         })}
       </div>
 
-      {!showFinish ? (
-        <div className="mt-8 flex justify-center">
-          <button
-            onClick={() => setShowFinish(true)}
-            className="rounded-2xl bg-emerald-500 px-8 py-3.5 font-semibold text-neutral-950 shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_36px_rgba(16,185,129,0.5)] active:scale-[0.98]"
-          >
-            {allDone ? '🏁 Terminar entrenamiento' : 'Finalizar entrenamiento'}
-          </button>
-        </div>
-      ) : (
-        <div className="glass-card card-hairline mt-8 rounded-2xl p-5 text-center">
-          <p className="font-semibold">¿Cómo te sentiste hoy?</p>
-          <div className="mt-4 flex justify-center gap-2">
-            {FEELINGS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => handleFinish(f.value)}
-                className="flex flex-col items-center gap-1 rounded-xl border border-edge bg-bg px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] active:scale-95"
-                title={f.text}
-              >
-                <span className="text-2xl">{f.label}</span>
-                <span className="text-xs text-dim2">{f.text}</span>
-              </button>
-            ))}
+      {createPortal(
+      <div className="fixed inset-x-4 bottom-24 z-30 mx-auto max-w-5xl md:bottom-6">
+        {!showFinish ? (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowFinish(true)}
+              className="rounded-2xl bg-emerald-500 px-8 py-3.5 font-semibold text-neutral-950 shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_36px_rgba(16,185,129,0.5)] active:scale-[0.98]"
+            >
+              {allDone ? t('train.finishAll') : t('train.finish')}
+            </button>
           </div>
-          <button
-            onClick={() => handleFinish(null)}
-            disabled={finishing}
-            className="mt-4 text-sm text-dim2 hover:text-soft disabled:opacity-50"
-          >
-            {finishing ? 'Guardando...' : 'Terminar sin sensación'}
-          </button>
-        </div>
-      )}
+        ) : (
+          <div className="glass-strong card-hairline rounded-2xl p-4 text-center">
+            <p className="font-semibold">{t('train.howFeel')}</p>
+            <div className="mt-3 flex justify-center gap-2">
+              {FEELINGS.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => handleFinish(f.value)}
+                  className="flex flex-col items-center gap-1 rounded-xl border border-edge bg-bg px-4 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-edge2 active:scale-95"
+                  title={t(f.textKey)}
+                >
+                  <span className="text-2xl">{f.label}</span>
+                  <span className="text-xs text-dim2">{t(f.textKey)}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => handleFinish(null)}
+              disabled={finishing}
+              className="mt-3 text-sm text-dim2 hover:text-soft disabled:opacity-50"
+            >
+              {finishing ? t('train.saving') : t('train.finishNoFeeling')}
+            </button>
+          </div>
+        )}
+      </div>,
+      document.body,
+    )}
 
       {noteTarget && (
-        <BottomSheet title="Nota de la serie" onClose={() => setNoteTarget(null)}>
+        <BottomSheet title={t('train.noteTitle')} onClose={() => setNoteTarget(null)}>
           <textarea
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             rows={3}
-            placeholder="Ej: última serie al fallo, dolor de hombro..."
+            placeholder={t('train.notePlaceholder')}
             className="w-full rounded-lg border border-edge bg-bg px-3 py-2 text-sm outline-none transition-colors placeholder:text-dim2 focus:border-emerald-500"
             autoFocus
           />
@@ -505,7 +516,7 @@ export default function Train() {
             onClick={saveNote}
             className="mt-4 min-h-12 w-full rounded-lg bg-emerald-500 px-4 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
           >
-            Guardar nota
+            {t('train.saveNote')}
           </button>
         </BottomSheet>
       )}
@@ -555,6 +566,7 @@ function ExerciseBlock({
 }: ExerciseBlockProps) {
   const exercise = re.exercise
   const doneCount = rows.filter((s) => s.completed).length
+  const { lang, t } = useLang()
   return (
     <section
       className={`overflow-hidden transition-shadow duration-300 ${
@@ -574,9 +586,9 @@ function ExerciseBlock({
             to={`/ejercicios/${exercise?.id}`}
             className="block truncate font-semibold text-high transition-colors hover:text-emerald-400"
           >
-            {exercise?.name ?? 'Ejercicio'}
+                        {exercise ? displayName(exercise, lang) : t('day.exercise')}
           </Link>
-          <p className="text-xs text-dim2">Plan: {re.sets} × {re.reps ?? '?'}</p>
+          <p className="text-xs text-dim2">{t('train.plan', { sets: re.sets, reps: re.reps ?? '?' })}</p>
         </div>
         <span className="rounded-full bg-surface2/80 px-2.5 py-1 font-mono text-xs font-semibold tabular-nums text-dim">
           {doneCount}/{rows.length}
@@ -603,7 +615,7 @@ function ExerciseBlock({
 
       {doneCount === rows.length && rows.length > 0 && (
         <div className="border-t border-edge px-4 py-2 text-center text-xs font-medium text-emerald-400">
-          ✓ Ejercicio completado
+          {t('train.done')}
         </div>
       )}
     </section>
@@ -612,6 +624,7 @@ function ExerciseBlock({
 
 function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNote }: SetRowProps) {
   const { ask, dialog } = useConfirm()
+  const { t } = useLang()
   const rowRef = useRef<HTMLLIElement>(null)
   const done = set.completed
 
@@ -633,7 +646,7 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
   }
 
   const btn =
-    'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-edge2 bg-surface2 text-sm font-semibold text-soft transition-all duration-150 active:scale-90 hover:border-emerald-500/50 hover:text-emerald-400'
+    'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-edge2 bg-surface2 text-sm font-semibold text-soft transition-all duration-150 active:scale-90 hover:border-edge2 hover:text-strong'
 
   const field =
     'h-14 w-20 rounded-xl border border-edge bg-bg px-1 text-center font-mono text-lg font-semibold tabular-nums outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
@@ -642,11 +655,9 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
     <li
       ref={rowRef}
       className={`flex items-start gap-2 px-2 py-2 transition-all duration-200 ${
-        active
-          ? 'scale-[1.01] bg-emerald-500/5 ring-2 ring-inset ring-emerald-500/60 shadow-[0_0_24px_rgba(16,185,129,0.12)]'
-          : ''
-      } ${saving ? 'ring-1 ring-inset ring-emerald-500/40' : ''} ${
-        done ? 'opacity-60' : ''
+        active ? 'bg-surface2/40 ring-2 ring-inset ring-edge2' : ''
+      } ${saving ? 'ring-1 ring-inset ring-edge2' : ''} ${
+        done ? 'bg-surface2/60' : ''
       }`}
     >
       <button
@@ -659,7 +670,7 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
             ? 'border-emerald-500 bg-gradient-to-b from-emerald-500 to-emerald-600 text-neutral-950 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
             : 'border-edge2 bg-bg text-dim2 hover:border-emerald-500/60 hover:bg-emerald-500/5 hover:text-emerald-400'
         }`}
-        title={done ? 'Desmarcar serie' : 'Marcar serie completada'}
+        title={done ? t('train.uncompleteSet') : t('train.completeSet')}
       >
         {done ? (
           <svg
@@ -681,8 +692,8 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <div className="flex items-center gap-1">
-            <span className="w-8 text-xs text-dim2">Peso</span>
-            <button onClick={() => stepWeight(-1)} className={btn} title="Bajar peso">
+            <span className="w-8 text-xs text-dim2">{t('train.weight')}</span>
+            <button onClick={() => stepWeight(-1)} className={btn} title={t('train.lowerWeight')}>
               −
             </button>
             <input
@@ -695,16 +706,16 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
                 onUpdate({ weight_kg: e.target.value === '' ? null : Number(e.target.value) })
               }
               onBlur={onCommit}
-              placeholder="Peso"
-              className={field}
+              placeholder={t('train.weight')}
+              className={`${field} ${done ? 'text-neutral-400' : ''}`}
             />
-            <button onClick={() => stepWeight(1)} className={btn} title="Subir peso">
+            <button onClick={() => stepWeight(1)} className={btn} title={t('train.raiseWeight')}>
               +
             </button>
           </div>
           <div className="flex items-center gap-1">
-            <span className="w-8 text-xs text-dim2">Reps</span>
-            <button onClick={() => stepReps(-1)} className={btn} title="Bajar reps">
+            <span className="w-8 text-xs text-dim2">{t('train.reps')}</span>
+            <button onClick={() => stepReps(-1)} className={btn} title={t('train.lowerReps')}>
               −
             </button>
             <input
@@ -716,10 +727,10 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
                 onUpdate({ reps: e.target.value === '' ? null : Number(e.target.value) })
               }
               onBlur={onCommit}
-              placeholder="Reps"
-              className={field}
+              placeholder={t('train.reps')}
+              className={`${field} ${done ? 'text-neutral-400' : ''}`}
             />
-            <button onClick={() => stepReps(1)} className={btn} title="Subir reps">
+            <button onClick={() => stepReps(1)} className={btn} title={t('train.raiseReps')}>
               +
             </button>
           </div>
@@ -732,8 +743,10 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
               onUpdate({ rpe: e.target.value === '' ? null : Number(e.target.value) })
             }
             onBlur={onCommit}
-            className="min-h-11 min-w-0 flex-1 rounded-xl border border-edge bg-bg px-2 text-xs outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-            title="RPE (esfuerzo percibido 5-10)"
+            className={`min-h-11 min-w-0 flex-1 rounded-xl border border-edge bg-bg px-2 text-xs outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 ${
+              done ? 'text-dim2' : ''
+            }`}
+            title={t('train.rpe')}
           >
             {RPE_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -742,31 +755,31 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
             ))}
           </select>
           {saved && (
-            <span className="animate-pop text-xs text-emerald-400">✓</span>
+            <span className="animate-pop text-xs text-dim">✓</span>
           )}
           <button
             onClick={onNote}
             className={`flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-lg transition-all duration-200 active:scale-90 ${
-              set.notes
-                ? 'text-emerald-400'
-                : 'text-dim2 hover:bg-surface2 hover:text-soft'
+              set.notes ? 'text-soft' : 'text-dim2 hover:bg-surface2 hover:text-soft'
             }`}
-            title={set.notes ? 'Editar nota' : 'Agregar nota'}
+            title={set.notes ? t('train.editNote') : t('train.addNote')}
           >
             ⋯
           </button>
           <button
             onClick={() =>
               ask({
-                title: 'Eliminar serie',
-                message: `¿Eliminar la serie ${set.set_number}? Se borra también del historial.`,
-                confirmLabel: 'Eliminar',
+                title: t('train.deleteSetTitle'),
+                message: t('train.deleteSetMessage', {
+                  n: set.set_number,
+                }),
+                confirmLabel: t('train.delete'),
                 danger: true,
                 onConfirm: onDelete,
               })
             }
             className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-dim2 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 active:scale-90"
-            title="Eliminar serie"
+            title={t('train.deleteSetTitle')}
           >
             ✕
           </button>

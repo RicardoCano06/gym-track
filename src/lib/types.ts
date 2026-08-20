@@ -1,12 +1,14 @@
 export interface Muscle {
   id: number
   name: string
+  name_en?: string | null
   group_name: string
 }
 
 export interface Equipment {
   id: number
   name: string
+  name_en?: string | null
   kind: string
 }
 
@@ -17,6 +19,7 @@ export interface Exercise {
   name_en: string | null
   description: string | null
   instructions: string[] | null
+  instructions_es?: string[] | null
   muscle_primary: number | null
   muscle_secondary: number[] | null
   equipment: number | null

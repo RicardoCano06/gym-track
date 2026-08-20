@@ -1,5 +1,5 @@
 -- ============================================================
--- GymTrack — Migración 004: supersets en routine_exercises
+-- Vekt — Migración 004: supersets en routine_exercises
 -- Ejecutar en el SQL Editor de Supabase
 -- ============================================================
 

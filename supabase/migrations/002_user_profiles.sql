@@ -1,5 +1,5 @@
 -- ============================================================
--- GymTrack — Migración 002: perfil del usuario
+-- Vekt — Migración 002: perfil del usuario
 -- Ejecutar en el SQL Editor de Supabase
 -- ============================================================
 

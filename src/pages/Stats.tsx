@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
 import { ProgressChart } from '@/components/ProgressChart'
 import { formatShortDate } from '@/lib/format'
 import {
@@ -10,6 +11,8 @@ import {
   fetchWeeklyVolumeSeries,
 } from '@/lib/db'
 import type { ExerciseProgressEntry, PR, Streak, WeeklyVolumePoint } from '@/lib/db'
+import { useLang } from '@/lib/lang-context'
+import { displayName } from '@/lib/i18n'
 
 const GROUP_COLORS = [
   '#10b981',
@@ -23,6 +26,7 @@ const GROUP_COLORS = [
 
 export default function Stats() {
   const { user } = useAuth()
+  const { lang, t } = useLang()
   const [streak, setStreak] = useState<Streak | null>(null)
   const [volume, setVolume] = useState<WeeklyVolumePoint[]>([])
   const [prs, setPrs] = useState<PR[]>([])
@@ -43,22 +47,20 @@ export default function Stats() {
         setPrs(p)
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Error al cargar estadísticas')
+        if (!cancelled) setError(e instanceof Error ? e.message : t('stats.loadError'))
       })
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, t])
 
   if (!user) return null
 
   return (
     <div>
       <header>
-        <h1 className="text-xl font-bold tracking-tight">Estadísticas</h1>
-        <p className="mt-1 text-sm text-dim2">
-          Tu progreso, en números y gráficos.
-        </p>
+        <h1 className="text-xl font-bold tracking-tight">{t('stats.title')}</h1>
+        <p className="mt-1 text-sm text-dim2">{t('stats.subtitle')}</p>
       </header>
 
       {error && (
@@ -68,20 +70,19 @@ export default function Stats() {
       )}
 
       <section className="mt-6 grid grid-cols-2 gap-3">
-        <StreakCard label="Racha actual" value={streak?.current ?? null} />
-        <StreakCard label="Mejor racha" value={streak?.best ?? null} />
+        <StreakCard label={t('stats.currentStreak')} value={streak?.current ?? null} />
+        <StreakCard label={t('stats.bestStreak')} value={streak?.best ?? null} />
       </section>
 
-      <VolumeChart volume={volume} />
+      <VolumeChart volume={volume} lang={lang} t={t} />
 
       <section className="mt-8">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-dim">
-          Récords personales
+          {t('stats.prs')}
         </h2>
         {prs.length === 0 ? (
           <p className="mt-3 rounded-2xl border border-edge bg-surface p-4 text-sm text-dim">
-            Todavía no hay récords. Registrá sesiones y vas a ver acá tus mejores
-            marcas por ejercicio.
+            {t('stats.noPrs')}
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -102,16 +103,22 @@ export default function Stats() {
                     <span className="h-11 w-11 shrink-0 rounded-xl bg-surface2" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-high">{pr.name}</p>
+                    <p className="truncate text-sm font-medium text-high">
+                      {displayName(pr, lang)}
+                    </p>
                     <p className="mt-0.5 text-xs text-dim2">
-                      Máx {pr.maxWeight} kg · {pr.sessions} sesión{pr.sessions === 1 ? '' : 'es'}
+                      {t('stats.max', {
+                        n: String(pr.maxWeight ?? '—'),
+                        s: pr.sessions,
+                        es: pr.sessions === 1 ? '' : 'es',
+                      })}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-sm font-bold tabular-nums text-emerald-400">
+                    <p className="font-mono text-sm font-bold tabular-nums text-strong">
                       {pr.maxOneRm!.toFixed(0)} kg
                     </p>
-                    <p className="mt-0.5 text-xs text-dim2">1RM est.</p>
+                    <p className="mt-0.5 text-xs text-dim2">{t('stats.estOneRm')}</p>
                   </div>
                 </Link>
               </li>
@@ -120,7 +127,7 @@ export default function Stats() {
         )}
       </section>
 
-      <ExerciseEvolution prs={prs} />
+      <ExerciseEvolution prs={prs} lang={lang} t={t} />
     </div>
   )
 }
@@ -128,7 +135,7 @@ export default function Stats() {
 function StreakCard({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="card-hairline glass-card rounded-2xl p-4">
-      <p className="font-mono text-3xl font-bold tracking-tight tabular-nums text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.35)]">
+      <p className="font-mono text-3xl font-bold tracking-tight tabular-nums text-strong">
         {value ?? '—'}
       </p>
       <p className="mt-1 text-xs text-dim2">{label}</p>
@@ -136,7 +143,15 @@ function StreakCard({ label, value }: { label: string; value: number | null }) {
   )
 }
 
-function VolumeChart({ volume }: { volume: WeeklyVolumePoint[] }) {
+function VolumeChart({
+  volume,
+  lang,
+  t,
+}: {
+  volume: WeeklyVolumePoint[]
+  lang: 'es' | 'en'
+  t: (key: string, vars?: Record<string, string | number>) => string
+}) {
   const weeks = useMemo(() => {
     const now = new Date()
     const day = now.getDay()
@@ -171,11 +186,11 @@ function VolumeChart({ volume }: { volume: WeeklyVolumePoint[] }) {
   return (
     <section className="mt-8">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-dim">
-        Volumen semanal
+        {t('stats.weeklyVolume')}
       </h2>
       {groups.length === 0 ? (
         <p className="mt-3 rounded-2xl border border-edge bg-surface p-4 text-sm text-dim">
-          Sin series registradas en las últimas 8 semanas.
+          {t('stats.noVolume')}
         </p>
       ) : (
         <>
@@ -204,8 +219,8 @@ function VolumeChart({ volume }: { volume: WeeklyVolumePoint[] }) {
               })}
             </svg>
             <div className="mt-2 flex justify-between text-xs text-dim2">
-              <span>{formatShortDate(weeks[0].weekStart)}</span>
-              <span>semana en curso · {formatShortDate(weeks[7].weekStart)}</span>
+              <span>{formatShortDate(weeks[0].weekStart, lang)}</span>
+              <span>{t('stats.currentWeek', { date: formatShortDate(weeks[7].weekStart, lang) })}</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5">
               {groups.map(([gname, total], gi) => (
@@ -214,7 +229,7 @@ function VolumeChart({ volume }: { volume: WeeklyVolumePoint[] }) {
                     className="h-2.5 w-2.5 rounded-sm"
                     style={{ backgroundColor: GROUP_COLORS[gi % GROUP_COLORS.length] }}
                   />
-                  {gname} · {total}
+                  {t(`group.${gname}`)} · {total}
                 </span>
               ))}
             </div>
@@ -225,8 +240,17 @@ function VolumeChart({ volume }: { volume: WeeklyVolumePoint[] }) {
   )
 }
 
-function ExerciseEvolution({ prs }: { prs: PR[] }) {
+function ExerciseEvolution({
+  prs,
+  lang,
+  t,
+}: {
+  prs: PR[]
+  lang: 'es' | 'en'
+  t: (key: string, vars?: Record<string, string | number>) => string
+}) {
   const { user } = useAuth()
+  const { pushToast } = useToast()
   const [exerciseId, setExerciseId] = useState('')
   const [seriesByExercise, setSeriesByExercise] = useState<
     Record<string, ExerciseProgressEntry[]>
@@ -242,18 +266,21 @@ function ExerciseEvolution({ prs }: { prs: PR[] }) {
       .then((res) => {
         if (!cancelled) setSeriesByExercise((m) => ({ ...m, [exerciseId]: res }))
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        if (!cancelled) pushToast('error', t('stats.evolutionError'))
+      })
     return () => {
       cancelled = true
     }
-  }, [exerciseId, user])
+  }, [exerciseId, user, pushToast, t])
 
   const selected = prs.find((p) => p.exerciseId === exerciseId)
 
   return (
     <section className="mt-8">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-dim">
-        Evolución por ejercicio
+        {t('stats.evolution')}
       </h2>
       {prs.length === 0 ? null : (
         <>
@@ -264,19 +291,19 @@ function ExerciseEvolution({ prs }: { prs: PR[] }) {
             }}
             className="mt-3 min-h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm text-strong outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
           >
-            <option value="">Elegí un ejercicio…</option>
+            <option value="">{t('stats.pickExercise')}</option>
             {prs.map((p) => (
               <option key={p.exerciseId} value={p.exerciseId}>
-                {p.name}
+                {displayName(p, lang)}
               </option>
             ))}
           </select>
 
-          {loading && <p className="mt-4 text-sm text-dim">Cargando…</p>}
+          {loading && <p className="mt-4 text-sm text-dim">{t('stats.loading')}</p>}
 
           {!loading && series && series.length < 2 && (
             <p className="mt-4 rounded-2xl border border-edge bg-surface p-4 text-sm text-dim">
-              Necesitás al menos 2 sesiones con este ejercicio para ver la evolución.
+              {t('stats.needTwo')}
             </p>
           )}
 
@@ -284,22 +311,22 @@ function ExerciseEvolution({ prs }: { prs: PR[] }) {
             <div className="glass-card card-hairline mt-4 rounded-2xl p-4">
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <p className="text-lg font-bold tracking-tight">
+                  <p className="text-lg font-bold tracking-tight tabular-nums">
                     {selected.maxWeight} kg
                   </p>
-                  <p className="mt-0.5 text-xs text-dim2">Peso máximo</p>
+                  <p className="mt-0.5 text-xs text-dim2">{t('stats.maxWeight')}</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold tracking-tight text-emerald-400">
+                  <p className="text-lg font-bold tracking-tight tabular-nums text-strong">
                     {selected.maxOneRm!.toFixed(1)} kg
                   </p>
-                  <p className="mt-0.5 text-xs text-dim2">1RM estimado</p>
+                  <p className="mt-0.5 text-xs text-dim2">{t('stats.estOneRm2')}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold tracking-tight">
                     {selected.sessions}
                   </p>
-                  <p className="mt-0.5 text-xs text-dim2">Sesiones</p>
+                  <p className="mt-0.5 text-xs text-dim2">{t('stats.sessions')}</p>
                 </div>
               </div>
               <ProgressChart series={series} />

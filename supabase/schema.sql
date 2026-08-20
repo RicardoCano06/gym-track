@@ -1,5 +1,5 @@
 -- ============================================================
--- GymTrack — Schema
+-- Vekt — Schema
 -- Ejecutar en el SQL Editor de Supabase (proyecto nuevo)
 -- ============================================================
 
@@ -24,6 +24,7 @@ create table if not exists public.exercises (
   name_en          text,
   description      text,
   instructions     text[],                   -- pasos de ejecución
+  instructions_es  text[],                   -- pasos traducidos al español
   muscle_primary   int references public.muscles(id),
   muscle_secondary int[] default '{}',
   equipment        int references public.equipment(id),
@@ -77,8 +78,8 @@ create table if not exists public.routine_exercises (
 create table if not exists public.sessions (
   id                uuid primary key default gen_random_uuid(),
   user_id           uuid not null references auth.users(id) on delete cascade,
-  routine_id        uuid references public.routines(id),
-  day_id            uuid references public.routine_days(id),
+  routine_id        uuid references public.routines(id) on delete set null,
+  day_id            uuid references public.routine_days(id) on delete set null,
   started_at        timestamptz not null default now(),
   ended_at          timestamptz,
   duration_minutes  int,
@@ -157,6 +158,9 @@ create policy "usuarios_medidas" on public.body_metrics
 create index if not exists idx_exercises_muscle    on public.exercises(muscle_primary);
 create index if not exists idx_exercises_equipment on public.exercises(equipment);
 create index if not exists idx_exercises_category  on public.exercises(category);
+-- Un nombre en español solo puede existir una vez (protege el catálogo de duplicados)
+create unique index if not exists exercises_name_unique_idx
+  on public.exercises(lower(trim(name)));
 create index if not exists idx_routines_user       on public.routines(user_id);
 create index if not exists idx_days_routine        on public.routine_days(routine_id);
 create index if not exists idx_day_exercises_day   on public.routine_exercises(day_id);

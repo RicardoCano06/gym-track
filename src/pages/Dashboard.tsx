@@ -10,6 +10,7 @@ import {
 } from '@/lib/db'
 import type { MuscleVolume, SuggestedSession } from '@/lib/db'
 import type { Session } from '@/lib/types'
+import { useLang } from '@/lib/lang-context'
 
 const TARGET_SETS = 10
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
@@ -67,6 +68,7 @@ const PlayIcon = (
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const { lang, t } = useLang()
   const [volume, setVolume] = useState<MuscleVolume[]>([])
   const [prevVolume, setPrevVolume] = useState<MuscleVolume[]>([])
   const [sessionsCount, setSessionsCount] = useState(0)
@@ -146,32 +148,33 @@ export default function Dashboard() {
   const nextDayId = activeSession?.day_id ?? next?.dayId ?? null
 
   const lastTrainedLabel = (iso: string | null) => {
-    if (!iso) return 'Nunca entrenado'
+    if (!iso) return t('dash.neverTrained')
     const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
-    if (days <= 0) return 'Entrenado hoy'
-    if (days === 1) return 'Último entrenamiento: ayer'
-    return `Último entrenamiento: hace ${days} días`
+    if (days <= 0) return t('dash.trainedToday')
+    if (days === 1) return t('dash.lastTrainYesterday')
+    return t('dash.lastTrainDays', { n: days })
   }
 
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Tu resumen semanal</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('dash.summary')}</h1>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <p className="text-sm text-dim">
-            Semana del{' '}
-            {weekStart.toLocaleDateString('es-AR', {
-              day: 'numeric',
-              month: 'long',
+            {t('common.week', {
+              date: weekStart.toLocaleDateString(
+                lang === 'en' ? 'en-US' : 'es-AR',
+                { day: 'numeric', month: 'long' },
+              ),
             })}
           </p>
           {lastWeight && (
             <Link
               to="/perfil"
-              className="rounded-full border border-edge bg-surface px-3 py-1 text-xs text-soft transition-all duration-200 hover:border-emerald-500/50 hover:text-emerald-400"
+              className="rounded-full border border-edge bg-surface px-3 py-1 text-xs text-soft transition-all duration-200 hover:border-edge2 hover:text-strong"
             >
-              Último peso: {lastWeight.weight} kg
-              {lastWeight.date === todayStr ? ' (hoy)' : ''}
+              {t('dash.lastWeight', { weight: lastWeight.weight })}
+              {lastWeight.date === todayStr ? t('dash.todayTag') : ''}
             </Link>
           )}
         </div>
@@ -190,24 +193,20 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-4">
           {nextDayId ? (
-            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/40 bg-gradient-to-b from-emerald-500/20 via-surface/60 to-surface/30 p-5 shadow-[0_0_36px_rgba(16,185,129,0.16)]">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl"
-              />
-              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-                {activeSession ? 'Sesión en curso' : 'Sugerencia para hoy'}
+            <div className="glass-card card-hairline p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-dim">
+                {activeSession ? t('dash.sessionActive') : t('dash.suggestion')}
               </p>
               <h2 className="mt-1 text-xl font-bold tracking-tight text-high">
                 {activeSession
                   ? next?.dayId === activeSession.day_id
                     ? next.dayName
-                    : 'Retomá donde lo dejaste'
+                    : t('dash.resumeWhere')
                   : next?.dayName}
               </h2>
               <p className="mt-1 text-sm text-dim">
                 {activeSession
-                  ? 'Hay una sesión activa sin finalizar'
+                  ? t('dash.activeSessionNote')
                   : `${next?.routineName} · ${lastTrainedLabel(next?.lastTrainedAt ?? null)}`}
               </p>
               <Link
@@ -215,58 +214,52 @@ export default function Dashboard() {
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_32px_rgba(16,185,129,0.55)] active:scale-[0.98]"
               >
                 {PlayIcon}
-                {activeSession ? 'Retomar' : 'Entrenar'}
+                {activeSession ? t('dash.resume') : t('dash.train')}
               </Link>
             </div>
           ) : (
             <Card className="p-5">
-              <h2 className="font-semibold">Sin sesiones sugeridas</h2>
-              <p className="mt-1 text-sm text-dim">
-                Creá una rutina con días de entrenamiento para empezar
-              </p>
+              <h2 className="font-semibold">{t('dash.noSuggested')}</h2>
+              <p className="mt-1 text-sm text-dim">{t('dash.noSuggestedHint')}</p>
               <Link
                 to="/rutinas"
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 active:scale-[0.98]"
               >
-                Ir a mis rutinas
+                {t('dash.goRoutines')}
               </Link>
             </Card>
           )}
 
           {sessionsCount === 0 ? (
             <div className="mt-4 text-center">
-              <p className="font-medium">Todavía no entrenaste esta semana</p>
-              <p className="mt-1 text-sm text-dim">
-                Completá una sesión para ver tu volumen semanal por músculo
-              </p>
+              <p className="font-medium">{t('dash.noTrainWeek')}</p>
+              <p className="mt-1 text-sm text-dim">{t('dash.noTrainWeekHint')}</p>
             </div>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-3 gap-2">
                 <StatCard
-                  label="Sesiones completadas"
+                  label={t('dash.sessionsDone')}
                   value={sessionsCount}
                   delta={sessionsCount - prevSessionsCount}
                   icon={CheckIcon}
                 />
                 <StatCard
-                  label="Series totales"
+                  label={t('dash.totalSets')}
                   value={totalSets}
                   delta={totalSets - prevTotalSets}
                   icon={DumbbellIcon}
                 />
-                <StatCard label="Grupos trabajados" value={volume.length} icon={TargetIcon} />
+                <StatCard label={t('dash.groupsWorked')} value={volume.length} icon={TargetIcon} />
               </div>
 
               <Card className="p-5">
-                <h2 className="font-semibold">Series por grupo muscular</h2>
+                <h2 className="font-semibold">{t('dash.volumeByGroup')}</h2>
                 <p className="mb-4 mt-1 text-xs text-dim2">
-                  Objetivo mínimo recomendado: {TARGET_SETS} series semanales por grupo para hipertrofia
+                  {t('dash.targetHint', { n: TARGET_SETS })}
                 </p>
                 {volume.length === 0 ? (
-                  <p className="text-sm text-dim">
-                    No se registraron series con músculo identificado esta semana.
-                  </p>
+                  <p className="text-sm text-dim">{t('dash.noVolume')}</p>
                 ) : (
                   <ul className="space-y-4">
                     {volume.map((m) => {
@@ -275,23 +268,19 @@ export default function Dashboard() {
                       return (
                         <li key={m.group_name}>
                           <div className="mb-1 flex items-baseline justify-between text-sm">
-                            <span className="font-medium capitalize text-high">{m.group_name}</span>
+                            <span className="font-medium capitalize text-high">{t(`group.${m.group_name}`)}</span>
                             <span
                               className={`font-mono tabular-nums ${
                                 reached ? 'text-emerald-400' : 'text-amber-400'
                               }`}
                             >
-                              {m.sets}/{TARGET_SETS} series
+                              {m.sets}/{TARGET_SETS} {t('dash.setsShort')}
                               {!reached && m.sets < TARGET_SETS
-                                ? ` · faltan ${TARGET_SETS - m.sets}`
+                                ? ` · ${t('dash.missing', { n: TARGET_SETS - m.sets })}`
                                 : ''}
                             </span>
                           </div>
-                          <div
-                            className={`h-2.5 overflow-hidden rounded-full bg-surface2/80 ring-1 ring-inset ring-edge transition-shadow duration-300 ${
-                              reached ? 'shadow-[0_0_16px_rgba(16,185,129,0.35)]' : ''
-                            }`}
-                          >
+                          <div className="h-2.5 overflow-hidden rounded-full bg-surface2/80 ring-1 ring-inset ring-edge">
                             <div
                               className={`h-full rounded-full transition-all duration-700 ease-out ${
                                 reached
@@ -326,24 +315,23 @@ function StatCard({
   delta?: number
   icon: React.ReactNode
 }) {
+  const { t } = useLang()
   return (
-    <div className="card-hairline glass-card rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/40">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-3xl font-bold tracking-tight tabular-nums">{value}</p>
-          <p className="mt-1 text-sm text-dim">{label}</p>
-        </div>
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+    <div className="card-hairline glass-card rounded-2xl p-3">
+      <div className="flex items-center justify-between gap-1.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface2 text-dim ring-1 ring-inset ring-edge">
           {icon}
         </span>
+        <p className="text-2xl font-bold tracking-tight tabular-nums">{value}</p>
       </div>
+      <p className="mt-1.5 text-[11px] leading-tight text-dim">{label}</p>
       {delta !== undefined && delta !== 0 && (
         <p
-          className={`mt-1 text-xs font-medium ${
-            delta > 0 ? 'text-emerald-400' : 'text-red-400'
+          className={`mt-1 text-[10px] font-medium ${
+            delta > 0 ? 'text-soft' : 'text-red-400'
           }`}
         >
-          {delta > 0 ? '▲' : '▼'} {Math.abs(delta)} vs semana pasada
+          {delta > 0 ? '▲' : '▼'} {Math.abs(delta)} {t('dash.vsPrev')}
         </p>
       )}
     </div>

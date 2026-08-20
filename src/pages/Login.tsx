@@ -1,22 +1,70 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { useLang } from '@/lib/lang-context'
+
+function Icon({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="h-[18px] w-[18px]"
+    >
+      {children}
+    </svg>
+  )
+}
+
+const EnvelopeIcon = (
+  <Icon>
+    <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+    <path d="m22 6-10 7L2 6" />
+  </Icon>
+)
+
+const LockIcon = (
+  <Icon>
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </Icon>
+)
+
+const EyeIcon = (
+  <Icon>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+)
+
+const EyeSlashIcon = (
+  <Icon>
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </Icon>
+)
 
 export default function Login() {
   const { user, loading } = useAuth()
+  const { t } = useLang()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-bg">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-edge2 border-t-emerald-500" />
+      <div className="flex min-h-dvh items-center justify-center bg-neutral-950">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-800 border-t-emerald-500" />
       </div>
     )
   }
@@ -31,14 +79,11 @@ export default function Login() {
     try {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) setError(translateError(error.message))
+        if (error) setError(translateError(error.message, t))
       } else {
         const { error } = await supabase.auth.signUp({ email, password })
-        if (error) setError(translateError(error.message))
-        else
-          setMessage(
-            'Cuenta creada. Si la confirmación de email está activada, revisá tu casilla para verificar y luego iniciá sesión.',
-          )
+        if (error) setError(translateError(error.message, t))
+        else setMessage(t('login.accountCreated'))
       }
     } finally {
       setSubmitting(false)
@@ -46,22 +91,23 @@ export default function Login() {
   }
 
   const inputClass =
-    'w-full rounded-xl border border-edge2 bg-bg/70 px-3.5 py-2.5 text-sm text-strong outline-none transition-all duration-200 placeholder:text-dim3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+    'h-11 w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3.5 pl-10 font-mono text-sm text-white outline-none transition-colors duration-200 placeholder:text-neutral-600 focus:border-emerald-500/50'
 
   return (
-    <div className="radial-top flex min-h-dvh flex-col items-center justify-center bg-bg px-4">
-      <div className="mb-8 flex animate-rise items-center gap-2 text-2xl font-bold">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 font-black text-neutral-950 shadow-[0_0_24px_rgba(16,185,129,0.5)]">
-          G
-        </span>
-        <span>GymTrack</span>
-      </div>
+    <div className="flex min-h-dvh flex-col justify-center bg-neutral-950 px-5 py-8">
+      <div className="mx-auto w-full max-w-sm">
+        <div className="mb-7 animate-rise">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo-vekt.png" alt="" aria-hidden className="h-[28px] w-auto" />
+            <img src="/letras-vekt-white.png" alt="Vekt" className="h-10 w-auto" />
+          </div>
+          <p className="mt-3 text-sm text-neutral-400">{t('login.tagline')}</p>
+        </div>
 
-      <div className="glass-strong card-hairline w-full max-w-sm animate-rise rounded-3xl p-6">
-        <div className="relative mb-6 flex rounded-xl bg-surface2/70 p-1 text-sm font-medium">
+        <div className="relative mb-6 flex rounded-lg bg-neutral-900 p-1">
           <span
             aria-hidden
-            className={`absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-lg bg-emerald-500 shadow-[0_4px_16px_rgba(16,185,129,0.35)] transition-transform duration-300 ease-out ${
+            className={`absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-md bg-neutral-800 transition-transform duration-300 ease-out ${
               mode === 'register' ? 'translate-x-full' : ''
             }`}
           />
@@ -74,42 +120,69 @@ export default function Login() {
                 setError(null)
                 setMessage(null)
               }}
-              className={`relative z-10 flex-1 rounded-lg py-2 transition-colors duration-200 ${
-                mode === m ? 'font-semibold text-neutral-950' : 'text-dim hover:text-high'
+              className={`relative z-10 flex-1 rounded-md py-2 text-sm transition-colors duration-200 ${
+                mode === m ? 'font-medium text-white' : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
-              {m === 'login' ? 'Ingresar' : 'Registrarse'}
+              {m === 'login' ? t('login.signIn') : t('login.signUp')}
             </button>
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-sm text-dim">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
-              placeholder="tu@email.com"
-            />
+            <label htmlFor="email" className="mb-1.5 block text-sm text-neutral-500">
+              {t('login.email')}
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+                {EnvelopeIcon}
+              </span>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                placeholder="tu@email.com"
+                autoComplete="email"
+              />
+            </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm text-dim">Contraseña</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
-              placeholder="••••••••"
-            />
+            <label htmlFor="password" className="mb-1.5 block text-sm text-neutral-500">
+              {t('login.password')}
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+                {LockIcon}
+              </span>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`${inputClass} pr-12`}
+                placeholder="••••••••"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                aria-pressed={showPassword}
+                className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-neutral-500 transition-colors hover:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+              >
+                {showPassword ? EyeSlashIcon : EyeIcon}
+              </button>
+            </div>
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-400">
               {error}
             </p>
           )}
@@ -122,9 +195,9 @@ export default function Login() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-neutral-950 shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_4px_28px_rgba(16,185,129,0.5)] active:scale-[0.99] disabled:opacity-60 disabled:shadow-none"
+            className="min-h-12 w-full rounded-lg bg-emerald-500 text-sm font-semibold text-neutral-950 transition-opacity duration-200 hover:opacity-90 active:opacity-80 disabled:opacity-50"
           >
-            {submitting ? 'Un momento...' : mode === 'login' ? 'Ingresar' : 'Crear cuenta'}
+            {submitting ? t('dialog.busy') : mode === 'login' ? t('login.signIn') : t('login.createAccount')}
           </button>
         </form>
       </div>
@@ -132,14 +205,17 @@ export default function Login() {
   )
 }
 
-function translateError(message: string): string {
+function translateError(
+  message: string,
+  t: (key: string) => string,
+): string {
   if (message.toLowerCase().includes('invalid login credentials'))
-    return 'Email o contraseña incorrectos'
+    return t('login.err.invalidCredentials')
   if (message.toLowerCase().includes('email not confirmed'))
-    return 'Email no confirmado. Revisá tu casilla de correo'
+    return t('login.err.emailNotConfirmed')
   if (message.toLowerCase().includes('already registered'))
-    return 'Ese email ya está registrado. Probá ingresar'
+    return t('login.err.alreadyRegistered')
   if (message.toLowerCase().includes('password should be at least'))
-    return 'La contraseña debe tener al menos 6 caracteres'
+    return t('login.err.passwordShort')
   return message
 }

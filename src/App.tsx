@@ -3,6 +3,7 @@ import Layout from '@/components/Layout'
 import { AuthProvider } from '@/components/AuthProvider'
 import { ToastProvider } from '@/components/Toast'
 import { ThemeProvider } from '@/lib/theme-context'
+import { LangProvider } from '@/lib/lang-context'
 import { useAuth } from '@/lib/auth-context'
 import Dashboard from '@/pages/Dashboard'
 import Catalog from '@/pages/Catalog'
@@ -54,11 +55,13 @@ const router = createBrowserRouter([
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
-      </AuthProvider>
+      <LangProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </AuthProvider>
+      </LangProvider>
     </ThemeProvider>
   )
 }
