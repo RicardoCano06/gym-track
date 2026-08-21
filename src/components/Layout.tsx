@@ -190,7 +190,7 @@ export default function Layout() {
         </span>
       </header>
 
-      <nav className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-edge md:px-4 md:py-6">
+      <nav className="hidden md:sticky md:top-0 md:flex md:h-dvh md:w-56 md:flex-col md:overflow-y-auto md:border-r md:border-edge md:px-4 md:py-6">
         <div className="flex items-center gap-2 px-2 pb-6 text-lg font-bold tracking-tight">
           <img src={logo} alt="" aria-hidden className="h-[21px] w-auto" />
           <img src={letras} alt="Vekt" className="h-[30px] w-auto" />
