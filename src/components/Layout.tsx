@@ -221,10 +221,10 @@ export default function Layout() {
             </NavLink>
           ))}
         </div>
-        <div className="mt-auto flex flex-col gap-3 pt-8">
-          <div className="flex items-center gap-2">
-            <LanguageToggle />
-            <ThemeToggle />
+        <div className="mt-auto flex flex-col gap-2 pt-8">
+          <div className="flex items-center gap-1 px-3">
+            <LanguageToggle subtle />
+            <ThemeToggle subtle />
           </div>
           <button
             type="button"

@@ -24,8 +24,29 @@ function GlobeIcon({ className }: { className?: string }) {
   )
 }
 
-export default function LanguageToggle() {
+export default function LanguageToggle({ subtle = false }: { subtle?: boolean }) {
   const { lang, setLang } = useLang()
+
+  if (subtle) {
+    return (
+      <div role="group" aria-label="Idioma" className="flex items-center gap-0.5">
+        {OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={lang === o.value}
+            onClick={() => setLang(o.value)}
+            title={o.value.toUpperCase()}
+            className={`flex h-8 items-center rounded-md px-1.5 text-xs font-medium transition-colors duration-200 ${
+              lang === o.value ? 'text-emerald-400' : 'text-dim hover:text-high'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div

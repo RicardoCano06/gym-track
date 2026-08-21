@@ -1,7 +1,7 @@
 import { useTheme } from '@/lib/theme-context'
 import { useLang } from '@/lib/lang-context'
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ subtle = false }: { subtle?: boolean }) {
   const { dark, toggle } = useTheme()
   const { t } = useLang()
 
@@ -10,7 +10,11 @@ export default function ThemeToggle() {
       onClick={toggle}
       title={dark ? t('theme.toggleLight') : t('theme.toggleDark')}
       aria-label={dark ? t('theme.toggleLight') : t('theme.toggleDark')}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-edge2 text-dim2 transition-all duration-200 hover:bg-surface2 hover:text-soft"
+      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 ${
+        subtle
+          ? 'text-dim hover:text-high'
+          : 'border border-edge2 text-dim2 transition-all duration-200 hover:bg-surface2 hover:text-soft'
+      }`}
     >
       {dark ? (
         <svg
