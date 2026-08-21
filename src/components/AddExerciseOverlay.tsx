@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { categories, muscleGroupOrder } from '@/lib/catalog'
 import { fetchEquipment, fetchExercises } from '@/lib/db'
 import type { Equipment, Exercise, RoutineDay } from '@/lib/types'
-import BodyMap from '@/components/BodyMap'
 import { useToast } from '@/lib/toast-context'
 import { displayName } from '@/lib/i18n'
 import { useLang } from '@/lib/lang-context'
@@ -26,7 +25,6 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
   const [searched, setSearched] = useState(false)
   const [fetching, setFetching] = useState(false)
   const [kinds, setKinds] = useState<string[]>([])
-  const [showBodyMap, setShowBodyMap] = useState(false)
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -70,7 +68,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [query, group, kind, category, showBodyMap, pushToast, t])
+  }, [query, group, kind, category, pushToast, t])
 
   const alreadyAdded = new Set([
     ...(day.exercises ?? []).map((re) => re.exercise_id),
@@ -81,7 +79,6 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
 
   function handleGroupSelect(g: string) {
     setGroup(g)
-    setShowBodyMap(false)
   }
 
   function handleAdd(ex: Exercise) {
@@ -124,17 +121,6 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                 )
               })}
             </div>
-            <button
-              onClick={() => setShowBodyMap((v) => !v)}
-              className="mt-3 text-xs font-medium text-emerald-400 hover:underline"
-            >
-              {showBodyMap ? t('add.hideBodyMap') : t('add.seeBodyMap')}
-            </button>
-            {showBodyMap && (
-              <div className="mt-3">
-                <BodyMap onSelectGroup={handleGroupSelect} selectedGroup={group} />
-              </div>
-            )}
           </div>
 
           <div className="flex gap-2">
@@ -153,7 +139,6 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                   setGroup('')
                   setKind('')
                   setCategory('')
-                  setShowBodyMap(false)
                 }}
                 className="flex min-h-11 items-center rounded-xl border border-edge px-3 text-sm text-dim2 transition-colors hover:bg-surface2"
               >
@@ -242,7 +227,6 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                     setGroup('')
                     setKind('')
                     setCategory('')
-                    setShowBodyMap(false)
                   }}
                   className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
                 >

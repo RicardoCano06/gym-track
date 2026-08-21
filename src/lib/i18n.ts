@@ -188,8 +188,6 @@ export const messages: Record<Lang, Record<string, string>> = {
     // ---------- agregar ejercicio ----------
     'add.title': 'Agregar ejercicio',
     'add.muscleGroup': 'Grupo muscular',
-    'add.seeBodyMap': 'Ver mapa corporal',
-    'add.hideBodyMap': 'Ocultar mapa corporal',
     'add.searchPlaceholder': 'Buscá por nombre...',
     'add.clear': 'Limpiar',
     'add.results': '{n} resultado{s}',
@@ -596,8 +594,6 @@ export const messages: Record<Lang, Record<string, string>> = {
 
     'add.title': 'Add exercise',
     'add.muscleGroup': 'Muscle group',
-    'add.seeBodyMap': 'View body map',
-    'add.hideBodyMap': 'Hide body map',
     'add.searchPlaceholder': 'Search by name...',
     'add.clear': 'Clear',
     'add.results': '{n} result{s}',
