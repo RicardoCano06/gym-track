@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
+import { logout } from '@/lib/auth'
 import { useConfirm } from '@/lib/use-confirm'
 import {
   fetchBodyMetrics,
@@ -405,7 +405,7 @@ export default function Profile() {
               confirmLabel: t('profile.logout'),
               danger: true,
               onConfirm: async () => {
-                await supabase.auth.signOut()
+                await logout()
               },
             })
           }

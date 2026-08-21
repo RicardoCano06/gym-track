@@ -1,3 +1,5 @@
+import { isDemoMode } from '@/lib/demo'
+import * as demo from '@/lib/demoData'
 import type { PostgrestFilterBuilder } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { enqueue, genId } from '@/lib/sync'
@@ -18,12 +20,14 @@ import type {
 const PAGE_SIZE = 60
 
 export async function fetchMuscles(): Promise<Muscle[]> {
+  if (isDemoMode()) return demo.fetchMuscles()
   const { data, error } = await supabase.from('muscles').select('*').order('id')
   if (error) throw error
   return data ?? []
 }
 
 export async function fetchEquipment(): Promise<Equipment[]> {
+  if (isDemoMode()) return demo.fetchEquipment()
   const { data, error } = await supabase.from('equipment').select('*').order('id')
   if (error) throw error
   return data ?? []
@@ -37,6 +41,7 @@ export interface ExerciseFilters {
 }
 
 export async function fetchExercises(filters: ExerciseFilters, page: number) {
+  if (isDemoMode()) return demo.fetchExercises(filters, page)
   if (filters.group) {
     const { data: muscles } = await supabase
       .from('muscles')
@@ -94,6 +99,7 @@ async function paginate(q: Query, page: number) {
 }
 
 export async function fetchExerciseDetail(id: string) {
+  if (isDemoMode()) return demo.fetchExerciseDetail(id)
   const { data: exercise, error } = await supabase
     .from('exercises')
     .select('*')
@@ -126,6 +132,7 @@ export async function fetchExerciseDetail(id: string) {
 // ---------- Rutinas ----------
 
 export async function fetchRoutines(userId: string): Promise<Routine[]> {
+  if (isDemoMode()) return demo.fetchRoutines(userId)
   const { data, error } = await supabase
     .from('routines')
     .select('*')
@@ -136,6 +143,7 @@ export async function fetchRoutines(userId: string): Promise<Routine[]> {
 }
 
 export async function createRoutine(userId: string, name: string): Promise<Routine> {
+  if (isDemoMode()) return demo.createRoutine(userId, name)
   const { data, error } = await supabase
     .from('routines')
     .insert({ user_id: userId, name })
@@ -146,6 +154,7 @@ export async function createRoutine(userId: string, name: string): Promise<Routi
 }
 
 export async function deleteRoutine(id: string) {
+  if (isDemoMode()) return demo.deleteRoutine(id)
   // Las sesiones referencian routine_id/day_id sin ON DELETE SET NULL en el
   // esquema: si la rutina tiene historial, el DELETE falla con FK (23503).
   // Desligamos las referencias primero para conservar el historial.
@@ -173,6 +182,7 @@ export async function deleteRoutine(id: string) {
 }
 
 export async function fetchRoutineDetail(id: string) {
+  if (isDemoMode()) return demo.fetchRoutineDetail(id)
   const { data: routine, error } = await supabase
     .from('routines')
     .select('*')
@@ -208,6 +218,7 @@ export async function createDay(
   weekday?: string | null,
   goal?: string | null,
 ) {
+  if (isDemoMode()) return demo.createDay(routineId, dayNumber, name, weekday, goal)
   const { data, error } = await supabase
     .from('routine_days')
     .insert({
@@ -227,11 +238,13 @@ export async function updateDay(
   id: string,
   patch: Partial<Pick<RoutineDay, 'name' | 'weekday' | 'goal'>>,
 ) {
+  if (isDemoMode()) return demo.updateDay(id, patch)
   const { error } = await supabase.from('routine_days').update(patch).eq('id', id)
   if (error) throw error
 }
 
 export async function deleteDay(id: string) {
+  if (isDemoMode()) return demo.deleteDay(id)
   const { error } = await supabase.from('routine_days').delete().eq('id', id)
   if (error) throw error
 }
@@ -241,6 +254,7 @@ export async function addExerciseToDay(
   exerciseId: string,
   position: number,
 ) {
+  if (isDemoMode()) return demo.addExerciseToDay(dayId, exerciseId, position)
   const { error } = await supabase.from('routine_exercises').insert({
     day_id: dayId,
     exercise_id: exerciseId,
@@ -258,15 +272,18 @@ export async function updateRoutineExercise(
     Pick<RoutineExercise, 'sets' | 'reps' | 'rest_seconds' | 'superset_group'>
   >,
 ) {
+  if (isDemoMode()) return demo.updateRoutineExercise(id, patch)
   const { error } = await supabase.from('routine_exercises').update(patch).eq('id', id)
   if (error) throw error
 }
 
 export async function removeRoutineExercise(id: string) {
+  if (isDemoMode()) return demo.removeRoutineExercise(id)
   enqueue('routine_exercise_remove', { id })
 }
 
 export async function fetchMuscleGroups(): Promise<string[]> {
+  if (isDemoMode()) return demo.fetchMuscleGroups()
   const { data, error } = await supabase.from('muscles').select('group_name')
   if (error) throw error
   const groups = new Set<string>()
@@ -278,6 +295,7 @@ export async function fetchExercisesByGroup(
   group: string,
   limit = 20,
 ): Promise<Exercise[]> {
+  if (isDemoMode()) return demo.fetchExercisesByGroup(group, limit)
   const { data: muscles } = await supabase
     .from('muscles')
     .select('id')
@@ -300,6 +318,7 @@ export async function fetchExercisesByGroup(
 // ---------- Sesiones ----------
 
 export async function fetchDayDetail(dayId: string): Promise<RoutineDay> {
+  if (isDemoMode()) return demo.fetchDayDetail(dayId)
   const { data, error } = await supabase
     .from('routine_days')
     .select('*, exercises:routine_exercises(*, exercises(id, name, name_en, image_url, muscle_primary))')
@@ -321,6 +340,7 @@ export async function findActiveSession(
   userId: string,
   dayId: string,
 ): Promise<Session | null> {
+  if (isDemoMode()) return demo.findActiveSession(userId, dayId)
   const { data, error } = await supabase
     .from('sessions')
     .select('*')
@@ -335,6 +355,7 @@ export async function findActiveSession(
 }
 
 export async function startSession(userId: string, dayId: string): Promise<Session> {
+  if (isDemoMode()) return demo.startSession(userId, dayId)
   const { data, error } = await supabase
     .from('sessions')
     .insert({ user_id: userId, day_id: dayId })
@@ -345,6 +366,7 @@ export async function startSession(userId: string, dayId: string): Promise<Sessi
 }
 
 export async function deleteSessionSet(id: string) {
+  if (isDemoMode()) return demo.deleteSessionSet(id)
   enqueue('session_set_delete', { id })
 }
 
@@ -354,6 +376,7 @@ export async function finishSession(
   feeling: number | null,
   notes?: string,
 ) {
+  if (isDemoMode()) return demo.finishSession(id, durationMinutes, feeling, notes)
   enqueue('session_finish', {
     id,
     ended_at: new Date().toISOString(),
@@ -364,6 +387,7 @@ export async function finishSession(
 }
 
 export async function deleteSession(id: string) {
+  if (isDemoMode()) return demo.deleteSession(id)
   const { error: e1 } = await supabase.from('session_sets').delete().eq('session_id', id)
   if (e1) throw e1
   const { error } = await supabase.from('sessions').delete().eq('id', id)
@@ -371,6 +395,7 @@ export async function deleteSession(id: string) {
 }
 
 export async function fetchSessionSets(sessionId: string): Promise<SessionSet[]> {
+  if (isDemoMode()) return demo.fetchSessionSets(sessionId)
   const { data, error } = await supabase
     .from('session_sets')
     .select('*')
@@ -390,12 +415,14 @@ export async function upsertSessionSet(row: {
   rpe: number | null
   completed: boolean
 }): Promise<SessionSet> {
+  if (isDemoMode()) return demo.upsertSessionSet(row)
   const withId = row.id ? row : { ...row, id: genId() }
   enqueue('session_set_upsert', withId as unknown as Record<string, unknown>)
   return withId as SessionSet
 }
 
 export async function fetchSessions(userId: string) {
+  if (isDemoMode()) return demo.fetchSessions(userId)
   const { data, error } = await supabase
     .from('sessions')
     .select('*, routine_days(name, day_number), routines(name)')
@@ -410,6 +437,7 @@ export async function fetchSessions(userId: string) {
 }
 
 export async function fetchSessionSetsWithExercises(sessionId: string) {
+  if (isDemoMode()) return demo.fetchSessionSetsWithExercises(sessionId)
   const { data, error } = await supabase
     .from('session_sets')
     .select('*, exercises(id, name, name_en, image_url)')
@@ -425,6 +453,7 @@ export async function fetchSessionSetsWithExercises(sessionId: string) {
 // ---------- Perfil y medidas corporales ----------
 
 export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
+  if (isDemoMode()) return demo.fetchUserProfile(userId)
   const { data, error } = await supabase
     .from('user_profiles')
     .select('*')
@@ -438,6 +467,7 @@ export async function saveUserProfile(
   userId: string,
   patch: Partial<Pick<UserProfile, 'height_cm' | 'age' | 'sex' | 'level' | 'goal'>>,
 ): Promise<UserProfile> {
+  if (isDemoMode()) return demo.saveUserProfile(userId, patch)
   const { data, error } = await supabase
     .from('user_profiles')
     .upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() })
@@ -451,6 +481,7 @@ export async function fetchBodyMetrics(
   userId: string,
   limit = 30,
 ): Promise<BodyMetric[]> {
+  if (isDemoMode()) return demo.fetchBodyMetrics(userId, limit)
   const { data, error } = await supabase
     .from('body_metrics')
     .select('*')
@@ -466,6 +497,7 @@ export async function saveBodyMetric(
   weightKg: number,
   notes?: string,
 ): Promise<BodyMetric> {
+  if (isDemoMode()) return demo.saveBodyMetric(userId, weightKg, notes)
   const row = {
     id: genId(),
     user_id: userId,
@@ -488,6 +520,7 @@ export async function fetchWeeklyMuscleVolume(
   userId: string,
   weekStart: string,
 ): Promise<MuscleVolume[]> {
+  if (isDemoMode()) return demo.fetchWeeklyMuscleVolume(userId, weekStart)
   const { data, error } = await supabase
     .from('session_sets')
     .select('exercises(muscle_primary, muscles(group_name)), sessions(started_at, ended_at)')
@@ -514,6 +547,7 @@ export async function countSessionsSince(
   userId: string,
   since: string,
 ): Promise<number> {
+  if (isDemoMode()) return demo.countSessionsSince(userId, since)
   const { count, error } = await supabase
     .from('sessions')
     .select('id', { count: 'exact', head: true })
@@ -537,6 +571,7 @@ export interface NextSession {
 }
 
 export async function fetchNextSession(userId: string): Promise<NextSession | null> {
+  if (isDemoMode()) return demo.fetchNextSession(userId)
   const { data, error } = await supabase
     .from('routine_days')
     .select('id, name, weekday, routines(id, name), routine_exercises(id)')
@@ -583,6 +618,7 @@ export type SuggestedSession = {
 export async function fetchSuggestedSession(
   userId: string,
 ): Promise<SuggestedSession | null> {
+  if (isDemoMode()) return demo.fetchSuggestedSession(userId)
   const { data: routines, error: e1 } = await supabase
     .from('routines')
     .select('id, name')
@@ -639,6 +675,7 @@ export async function fetchSuggestedSession(
 }
 
 export async function fetchActiveSession(userId: string): Promise<Session | null> {
+  if (isDemoMode()) return demo.fetchActiveSession(userId)
   const { data, error } = await supabase
     .from('sessions')
     .select('*')
@@ -665,6 +702,7 @@ export async function fetchExerciseProgress(
   userId: string,
   exerciseId: string,
 ): Promise<ExerciseProgressEntry[]> {
+  if (isDemoMode()) return demo.fetchExerciseProgress(userId, exerciseId)
   const { data, error } = await supabase
     .from('session_sets')
     .select('weight_kg, reps, rpe, sessions(id, started_at)')
@@ -700,6 +738,7 @@ export interface Streak {
 }
 
 export async function fetchStreak(userId: string): Promise<Streak> {
+  if (isDemoMode()) return demo.fetchStreak(userId)
   const { data, error } = await supabase
     .from('sessions')
     .select('started_at')
@@ -750,6 +789,7 @@ export async function fetchWeeklyVolumeSeries(
   userId: string,
   weeks = 8,
 ): Promise<WeeklyVolumePoint[]> {
+  if (isDemoMode()) return demo.fetchWeeklyVolumeSeries(userId, weeks)
   const now = new Date()
   const day = now.getDay()
   const diff = day === 0 ? -6 : 1 - day
@@ -802,6 +842,7 @@ export interface PR {
 }
 
 export async function fetchPRs(userId: string, limit = 8): Promise<PR[]> {
+  if (isDemoMode()) return demo.fetchPRs(userId, limit)
   const { data, error } = await supabase
     .from('session_sets')
     .select('weight_kg, reps, exercises(id, name, name_en, image_url), sessions(started_at)')
@@ -864,6 +905,7 @@ export interface ExportRow {
 }
 
 export async function fetchExportData(userId: string): Promise<ExportRow[]> {
+  if (isDemoMode()) return demo.fetchExportData(userId)
   const { data, error } = await supabase
     .from('sessions')
     .select(

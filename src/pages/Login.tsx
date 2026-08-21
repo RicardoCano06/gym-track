@@ -4,6 +4,9 @@ import { Navigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useLang } from '@/lib/lang-context'
+import { DEMO_EMAIL, DEMO_PASSWORD, enterLocalDemo, purgeDemoLocal } from '@/lib/demo'
+import { resetDemoData } from '@/lib/demoData'
+import { DEMO_LOCAL_EVENT } from '@/lib/auth'
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -85,6 +88,30 @@ export default function Login() {
         if (error) setError(translateError(error.message, t))
         else setMessage(t('login.accountCreated'))
       }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Acceso Demo Sandbox (1-Click):
+  //   1) Purga local (incluye deleteDatabase('vekt-local')) -> lienzo en blanco.
+  //   2) Sign-in con la cuenta demo estática.
+  //   3) Fallback: si Supabase está inaccesible, modo "Demo Puramente Local".
+  async function handleDemo() {
+    setError(null)
+    setMessage(null)
+    setSubmitting(true)
+    await purgeDemoLocal()
+    resetDemoData()
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      })
+      if (error) throw error
+    } catch {
+      enterLocalDemo()
+      window.dispatchEvent(new CustomEvent(DEMO_LOCAL_EVENT))
     } finally {
       setSubmitting(false)
     }
@@ -200,6 +227,25 @@ export default function Login() {
             {submitting ? t('dialog.busy') : mode === 'login' ? t('login.signIn') : t('login.createAccount')}
           </button>
         </form>
+
+        <div className="my-5 flex items-center gap-3" aria-hidden>
+          <span className="h-px flex-1 bg-neutral-800" />
+          <span className="text-xs text-neutral-600">o</span>
+          <span className="h-px flex-1 bg-neutral-800" />
+        </div>
+
+        <button
+          type="button"
+          data-testid="demo-login"
+          disabled={submitting}
+          onClick={handleDemo}
+          className="min-h-12 w-full rounded-lg border border-neutral-700 bg-neutral-900 text-sm font-semibold text-neutral-200 transition-colors duration-200 hover:border-emerald-500/50 hover:text-white active:opacity-80 disabled:opacity-50"
+        >
+          <span className="flex items-center justify-center gap-2">
+            ⚡ {t('login.demo')}
+          </span>
+        </button>
+        <p className="mt-2 text-center text-xs text-neutral-600">{t('login.demoHint')}</p>
       </div>
     </div>
   )

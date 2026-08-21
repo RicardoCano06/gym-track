@@ -122,6 +122,9 @@ export const messages: Record<Lang, Record<string, string>> = {
     'login.showPassword': 'Mostrar contraseña',
     'login.accountCreated':
       'Cuenta creada. Si la confirmación de email está activada, revisá tu casilla para verificar y luego iniciá sesión.',
+    'login.demo': 'Entrar como Invitado (Demo)',
+    'login.demoHint':
+      'Sin registro: datos de ejemplo aislados en tu dispositivo, se borran al salir.',
     'login.err.invalidCredentials': 'Email o contraseña incorrectos',
     'login.err.emailNotConfirmed': 'Email no confirmado. Revisá tu casilla de correo',
     'login.err.alreadyRegistered': 'Ese email ya está registrado. Probá ingresar',
@@ -532,6 +535,9 @@ export const messages: Record<Lang, Record<string, string>> = {
     'login.showPassword': 'Show password',
     'login.accountCreated':
       'Account created. If email confirmation is enabled, check your inbox to verify and then sign in.',
+    'login.demo': 'Enter as Guest (Demo)',
+    'login.demoHint':
+      'No signup needed: sample data stays isolated on your device and is wiped on logout.',
     'login.err.invalidCredentials': 'Incorrect email or password',
     'login.err.emailNotConfirmed': 'Email not confirmed. Check your inbox',
     'login.err.alreadyRegistered': 'That email is already registered. Try signing in',

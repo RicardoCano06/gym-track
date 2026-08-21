@@ -6,6 +6,7 @@ import ErrorState from '@/components/ErrorState'
 import type { ExportRow } from '@/lib/db'
 import type { Session, SessionSet } from '@/lib/types'
 import { useLang } from '@/lib/lang-context'
+import { displayName } from '@/lib/i18n'
 
 type SessionWithMeta = Session & {
   routine_days: { name: string | null; day_number: number } | null
@@ -293,7 +294,7 @@ function SessionCard({ session }: { session: SessionWithMeta }) {
                           className="h-8 w-8 rounded-md object-cover"
                         />
                       )}
-                      <p className="text-sm font-medium">{ex?.name ?? t('history.exercise')}</p>
+                      <p className="text-sm font-medium">{ex ? displayName(ex, lang) : t('history.exercise')}</p>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {rows.map((s) => (

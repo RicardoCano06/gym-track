@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { isDemoMode } from '@/lib/demo'
 
 export interface PendingOp {
   id: string
@@ -319,6 +320,9 @@ export function subscribeSync(listener: () => void): () => void {
 
 export function enqueue(kind: string, payload: Record<string, unknown>) {
   if (!currentUserId) return
+  // Blackhole demo: las mutaciones del sandbox jamás salen a la red; el espejo
+  // local (demoData) ya escribió el cambio en IndexedDB para feedback instantáneo.
+  if (isDemoMode()) return
   const fresh = loadQueue()
   // Coalescing de ediciones: si ya hay un upsert pendiente para la misma
   // entidad, el ultimo estado reemplaza al anterior (una sola peticion).
@@ -375,6 +379,7 @@ export function enqueueDelayed(
   delayMs: number,
 ) {
   if (!currentUserId) return
+  if (isDemoMode()) return
   const op: PendingOp = {
     id: genId(),
     kind,
@@ -428,6 +433,14 @@ async function flushInner() {
     const current = loadQueue()
     if (!current.some((q) => q.id === op.id)) continue
     if (op.userId !== currentUserId) continue
+    // Blackhole demo: la op se marca como "sincronizada" descartándola de la
+    // cola sin emitir NINGÚN fetch a Supabase (defensa de profundidad; en modo
+    // demo las escrituras ya van al espejo local y nunca llegan a enqueue).
+    if (isDemoMode()) {
+      saveQueue(loadQueue().filter((q) => q.id !== op.id))
+      notify()
+      continue
+    }
     const executor = executors.get(op.kind)
     if (!executor) continue
     // AbortController: el timeout aborta el fetch subyacente (cierre fisico del

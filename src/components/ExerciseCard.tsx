@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { Exercise } from '@/lib/types'
+import { displayName } from '@/lib/i18n'
+import { useLang } from '@/lib/lang-context'
 
 interface Props {
   exercise: Exercise
@@ -7,6 +9,9 @@ interface Props {
 }
 
 export default function ExerciseCard({ exercise, muscleName }: Props) {
+  const { lang } = useLang()
+  const name = displayName(exercise, lang)
+
   return (
     <Link
       to={`/ejercicios/${exercise.id}`}
@@ -16,7 +21,7 @@ export default function ExerciseCard({ exercise, muscleName }: Props) {
         {exercise.image_url ? (
           <img
             src={exercise.image_url}
-            alt={exercise.name}
+            alt={name}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
@@ -26,7 +31,7 @@ export default function ExerciseCard({ exercise, muscleName }: Props) {
       </div>
       <div className="p-3">
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-high">
-          {exercise.name}
+          {name}
         </h3>
         {exercise.muscle_primary != null && (
           <span className="mt-2 inline-block rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400 ring-1 ring-inset ring-emerald-500/25">
