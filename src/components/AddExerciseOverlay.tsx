@@ -200,7 +200,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-edge2 border-t-emerald-500" />
             </div>
           ) : shown.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {shown.slice(0, 40).map((ex) => (
                 <button
                   key={ex.id}

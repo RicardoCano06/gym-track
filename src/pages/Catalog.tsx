@@ -183,7 +183,7 @@ export default function Catalog() {
       {error ? (
         <ErrorState message={error} onRetry={load} />
       ) : loading ? (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="overflow-hidden rounded-2xl border border-edge bg-surface">
               <div className="shimmer aspect-square bg-surface2" />
@@ -210,7 +210,7 @@ export default function Catalog() {
         </div>
       ) : (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {exercises.map((exercise) => (
               <ExerciseCard
                 key={exercise.id}

@@ -254,7 +254,7 @@ export default function Layout() {
         </div>
       </nav>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-32 pt-6 md:px-8 md:py-10">
+      <main className="mx-auto w-full flex-1 px-4 pb-32 pt-6 md:px-8 md:py-10 lg:max-w-7xl">
         <div key={location.pathname} className="animate-rise">
           <Outlet />
         </div>
