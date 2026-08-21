@@ -13,11 +13,11 @@ export default function BottomSheet({ title, onClose, children }: BottomSheetPro
   // viewport.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="glass-strong card-hairline w-full max-w-md animate-rise rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        className="glass-strong card-hairline w-full max-w-md animate-rise rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-edge2" />

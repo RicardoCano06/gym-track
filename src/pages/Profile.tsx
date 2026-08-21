@@ -409,7 +409,7 @@ export default function Profile() {
               },
             })
           }
-          className="min-h-12 w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20 active:scale-[0.99] md:hidden"
+          className="min-h-12 w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20 active:scale-[0.99] md:max-w-xs"
         >
           {t('profile.logout')}
         </button>

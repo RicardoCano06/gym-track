@@ -7,6 +7,8 @@ import ThemeToggle from '@/components/ThemeToggle'
 import ScrollToTop from '@/components/ScrollToTop'
 import { useTheme } from '@/lib/theme-context'
 import { useLang } from '@/lib/lang-context'
+import { useConfirm } from '@/lib/use-confirm'
+import { logout } from '@/lib/auth'
 
 const links = [
   { to: '/', key: 'nav.home', end: true },
@@ -166,6 +168,7 @@ export default function Layout() {
   const location = useLocation()
   const { dark } = useTheme()
   const { t } = useLang()
+  const { ask, dialog } = useConfirm()
 
   const isTrainRoute = location.pathname.startsWith('/entrenar/')
 
@@ -220,7 +223,36 @@ export default function Layout() {
             </NavLink>
           ))}
         </div>
-        </nav>
+        <div className="mt-auto flex flex-col gap-1 pt-8">
+          <button
+            type="button"
+            onClick={() =>
+              ask({
+                title: t('profile.logoutTitle'),
+                message: t('profile.logoutMessage'),
+                confirmLabel: t('profile.logout'),
+                danger: true,
+                onConfirm: () => logout(),
+              })
+            }
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-dim transition-all duration-200 hover:bg-red-500/10 hover:text-red-400"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="h-4 w-4"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+            {t('profile.logout')}
+          </button>
+        </div>
+      </nav>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-32 pt-6 md:px-8 md:py-10">
         <div key={location.pathname} className="animate-rise">
@@ -233,6 +265,7 @@ export default function Layout() {
       <div className="fixed bottom-24 left-3 z-40 md:bottom-8 md:left-auto md:right-4">
         {!isTrainRoute && <SyncStatus />}
       </div>
+      {dialog}
     </div>
   )
 }
