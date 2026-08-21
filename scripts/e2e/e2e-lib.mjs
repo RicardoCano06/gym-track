@@ -1,4 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const URL = 'https://rikbdlgdbxarddfusmwg.supabase.co'
 export const ANON =
@@ -6,7 +9,26 @@ export const ANON =
 export const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173'
 export const CDP_URL = process.env.CDP_URL ?? 'http://localhost:9222'
 export const TEST_EMAIL = 'gymtrack.test.2026@gmail.com'
-export const TEST_PASS = 'test123456'
+
+// La password del usuario de test NUNCA se hardcodea en el repo: se lee de
+// la variable de entorno E2E_TEST_PASSWORD o, en su defecto, del archivo
+// local .env.local (no versionado). Sin valor, las suites fallan a propósito.
+function readLocalEnv(key) {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const raw = readFileSync(resolve(here, '..', '..', '.env.local'), 'utf8')
+    const match = raw.match(new RegExp(`^${key}=(.+)$`, 'm'))
+    return match ? match[1].trim() : null
+  } catch {
+    return null
+  }
+}
+export const TEST_PASS = process.env.E2E_TEST_PASSWORD ?? readLocalEnv('E2E_TEST_PASSWORD')
+if (!TEST_PASS) {
+  throw new Error(
+    'Falta E2E_TEST_PASSWORD: definila en el entorno o en .env.local (ver .env.example)',
+  )
+}
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 

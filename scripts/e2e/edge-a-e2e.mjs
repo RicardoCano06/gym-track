@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import {
   ANON,
+  TEST_EMAIL,
+  TEST_PASS,
   BASE_URL,
   URL,
   cleanupE2E,
@@ -15,8 +17,8 @@ const NAME = 'E2E Edge ' + Date.now()
 async function seed() {
   const client = createClient(URL, ANON)
   const { data: auth } = await client.auth.signInWithPassword({
-    email: 'gymtrack.test.2026@gmail.com',
-    password: 'test123456',
+    email: TEST_EMAIL,
+    password: TEST_PASS,
   })
   const uid = auth.user.id
   const { data: ex } = await client.from('exercises').select('id').limit(2)
@@ -94,7 +96,7 @@ const run = async () => {
 
   await sleep(5000)
   const client = createClient(URL, ANON)
-  await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
+  await client.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASS })
   const { data: re1Check } = await client.from('routine_exercises').select('id').eq('id', seedData.re1.id)
   console.log('UNDO_WON_RE1_INTACT:', (re1Check ?? []).length > 0)
 

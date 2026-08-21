@@ -9,7 +9,9 @@ import type { User } from '@supabase/supabase-js'
 import { closeDemoDb, DEMO_DB_NAME } from '@/lib/demoStore'
 
 export const DEMO_EMAIL = 'demo@vekt.app'
-export const DEMO_PASSWORD = 'demo-vekt-2026'
+// Password de la cuenta demo: NO se versiona. Se configura por despliegue
+// (VITE_DEMO_PASSWORD). Sin valor, el botón demo usa el modo 100% local.
+export const DEMO_PASSWORD: string = import.meta.env.VITE_DEMO_PASSWORD ?? ''
 export const DEMO_LOCAL_USER_ID = '00000000-0000-4000-8000-00000000d3a0'
 
 const DEMO_FLAG = 'gymtrack-demo'

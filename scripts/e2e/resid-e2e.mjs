@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import {
   ANON,
   BASE_URL,
+  TEST_EMAIL,
+  TEST_PASS,
   URL,
   cleanupE2E,
   closeStrayPages,
@@ -20,7 +22,7 @@ const run = async () => {
   console.log('LOGGED_IN:', await login(page))
 
   const client = createClient(URL, ANON)
-  const { data: auth } = await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
+  const { data: auth } = await client.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASS })
   const uid = auth.user?.id
   const qread = (key) => `JSON.parse(localStorage.getItem('${key}') || '[]')`
   const qkey = `gymtrack-sync-queue-${uid}`

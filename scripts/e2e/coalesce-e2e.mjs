@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import {
   ANON,
+  TEST_EMAIL,
+  TEST_PASS,
   BASE_URL,
   URL,
   cleanupE2E,
@@ -15,8 +17,8 @@ const NAME = 'E2E Edge ' + Date.now()
 async function seed() {
   const client = createClient(URL, ANON)
   const { data: auth } = await client.auth.signInWithPassword({
-    email: 'gymtrack.test.2026@gmail.com',
-    password: 'test123456',
+    email: TEST_EMAIL,
+    password: TEST_PASS,
   })
   const uid = auth.user.id
   const { data: ex } = await client.from('exercises').select('id').limit(1)
@@ -86,7 +88,7 @@ const run = async () => {
   await page.send('Network.emulateNetworkConditions', online)
   await sleep(5000)
   const client = createClient(URL, ANON)
-  await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
+  await client.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASS })
   const { data: row } = await client.from('session_sets').select('id').eq('id', setRowId)
   console.log('SET_NEVER_SYNCED:', setRowId !== undefined && (row ?? []).length === 0)
 

@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import {
   ANON,
+  TEST_EMAIL,
+  TEST_PASS,
   BASE_URL,
   URL,
   cleanupE2E,
@@ -15,8 +17,8 @@ const NAME = 'E2E Edge ' + Date.now()
 async function seed() {
   const client = createClient(URL, ANON)
   const { data: auth } = await client.auth.signInWithPassword({
-    email: 'gymtrack.test.2026@gmail.com',
-    password: 'test123456',
+    email: TEST_EMAIL,
+    password: TEST_PASS,
   })
   const uid = auth.user.id
   const { data: ex } = await client.from('exercises').select('id').limit(1)
@@ -48,7 +50,7 @@ async function seed() {
 
 async function weightsForDay(uid, dayId) {
   const client = createClient(URL, ANON)
-  await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
+  await client.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASS })
   const { data: sessions } = await client
     .from('sessions')
     .select('id')
@@ -94,7 +96,7 @@ const run = async () => {
   const qAfterVisible = await pageA.eval(readQueue(seedData.uid))
   console.log('QUEUE_AFTER_VISIBLE:', JSON.stringify(qAfterVisible.map((o) => ({ kind: o.kind, retries: o.retries, weight: o.payload?.weight_kg }))))
   const client = createClient(URL, ANON)
-  const { data: auth } = await client.auth.signInWithPassword({ email: 'gymtrack.test.2026@gmail.com', password: 'test123456' })
+  const { data: auth } = await client.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASS })
   const uid = auth.user.id
   const { data: sessOfDay } = await client.from('sessions').select('id, day_id').eq('user_id', uid).eq('day_id', seedData.dayId)
   console.log('SESSIONS_OF_DAY:', JSON.stringify(sessOfDay))

@@ -95,8 +95,9 @@ export default function Login() {
 
   // Acceso Demo Sandbox (1-Click):
   //   1) Purga local (incluye deleteDatabase('vekt-local')) -> lienzo en blanco.
-  //   2) Sign-in con la cuenta demo estática.
-  //   3) Fallback: si Supabase está inaccesible, modo "Demo Puramente Local".
+  //   2) Si el despliegue configuró VITE_DEMO_PASSWORD, intenta el sign-in con
+  //      la cuenta demo; si no hay password configurada o Supabase falla,
+  //   3) cae al modo "Demo Puramente Local" (datos 100% en el dispositivo).
   async function handleDemo() {
     setError(null)
     setMessage(null)
@@ -104,6 +105,7 @@ export default function Login() {
     await purgeDemoLocal()
     resetDemoData()
     try {
+      if (!DEMO_PASSWORD) throw new Error('demo sin password configurada')
       const { error } = await supabase.auth.signInWithPassword({
         email: DEMO_EMAIL,
         password: DEMO_PASSWORD,
