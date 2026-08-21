@@ -192,7 +192,9 @@ export async function fetchExercises(filters: ExerciseFilters, page: number): Pr
     const filter = { ...filters }
     let q = supabase
       .from('exercises')
-      .select('id, name, name_en, muscle_primary, muscle_secondary, equipment, category, image_url, level')
+      .select('id, name, name_en, muscle_primary, muscle_secondary, equipment, category, image_url, level', {
+        count: 'exact',
+      })
     if (filter.group) {
       const { data: muscles } = await supabase
         .from('muscles')
