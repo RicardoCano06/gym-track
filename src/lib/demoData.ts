@@ -6,7 +6,8 @@
 // tocan Supabase ("Blackhole"). Así el usuario demo crea rutinas y registra
 // series con feedback instantáneo, de forma efímera y aislada.
 import { genId } from '@/lib/sync'
-import { DEMO_LOCAL_USER_ID } from '@/lib/demo'
+import { DEMO_LOCAL_USER_ID, isLocalDemoMode } from '@/lib/demo'
+import { supabase } from '@/lib/supabase'
 import { buildDemoDataset, embeddedEquipment, embeddedExercises, embeddedMuscles } from '@/lib/demoSeed'
 import * as store from '@/lib/demoStore'
 import { WEEKDAYS } from '@/lib/constants'
@@ -142,20 +143,43 @@ export function resetDemoData() {
 }
 
 // ---------- catálogo ----------
+//
+// El catálogo de ejercicios es PÚBLICO en Supabase (RLS lectura libre): en el
+// modo demo online se sirve el catálogo REAL completo (867 ejercicios, con
+// fotos e instrucciones). Solo el fallback "Demo Puramente Local" (sin red)
+// usa el catálogo embebido de 12 ejercicios que acompaña al historial.
+
+const CATALOG_PAGE_SIZE = 60
 
 export async function fetchMuscles(): Promise<Muscle[]> {
+  if (!isLocalDemoMode()) {
+    const { data, error } = await supabase.from('muscles').select('*').order('id')
+    if (!error && data) return data as Muscle[]
+  }
   const rows = await store.loadAll<Muscle>('muscles')
   if (rows.length) return rows.sort((a, b) => a.id - b.id)
   return embeddedMuscles()
 }
 
 export async function fetchEquipment(): Promise<Equipment[]> {
+  if (!isLocalDemoMode()) {
+    const { data, error } = await supabase.from('equipment').select('*').order('id')
+    if (!error && data) return data as Equipment[]
+  }
   const rows = await store.loadAll<Equipment>('equipment')
   if (rows.length) return rows.sort((a, b) => a.id - b.id)
   return embeddedEquipment()
 }
 
 export async function fetchMuscleGroups(): Promise<string[]> {
+  if (!isLocalDemoMode()) {
+    const { data, error } = await supabase.from('muscles').select('group_name')
+    if (!error && data) {
+      const groups = new Set<string>()
+      for (const m of data) if (m.group_name) groups.add(m.group_name)
+      return [...groups].sort()
+    }
+  }
   const muscles = await fetchMuscles()
   const groups = new Set<string>()
   for (const m of muscles) if (m.group_name) groups.add(m.group_name)
@@ -163,6 +187,37 @@ export async function fetchMuscleGroups(): Promise<string[]> {
 }
 
 export async function fetchExercises(filters: ExerciseFilters, page: number): Promise<{ exercises: Exercise[]; total: number }> {
+  if (!isLocalDemoMode()) {
+    const filter = { ...filters }
+    let q = supabase
+      .from('exercises')
+      .select('id, name, name_en, muscle_primary, muscle_secondary, equipment, category, image_url, level', {
+        count: 'exact',
+      })
+    if (filter.group) {
+      const { data: muscles } = await supabase
+        .from('muscles')
+        .select('id')
+        .eq('group_name', filter.group)
+      if (!muscles?.length) return { exercises: [], total: 0 }
+      q = q.in('muscle_primary', muscles.map((m) => m.id))
+    }
+    if (filter.search) q = q.ilike('name', `%${filter.search}%`)
+    if (filter.category) q = q.eq('category', filter.category)
+    if (filter.equipmentKind) {
+      const { data: eqs } = await supabase
+        .from('equipment')
+        .select('id')
+        .eq('kind', filter.equipmentKind)
+      if (!eqs?.length) return { exercises: [], total: 0 }
+      q = q.in('equipment', eqs.map((e) => e.id))
+    }
+    const from = page * CATALOG_PAGE_SIZE
+    const { data, count, error } = await q.order('name').range(from, from + CATALOG_PAGE_SIZE - 1)
+    if (!error && data) {
+      return { exercises: data as Exercise[], total: count ?? 0 }
+    }
+  }
   await ensureSeeded(DEMO_LOCAL_USER_ID)
   const rows = await store.loadAll<Exercise>('exercises')
   const muscles = await fetchMuscles()
@@ -183,14 +238,32 @@ export async function fetchExercises(filters: ExerciseFilters, page: number): Pr
     return true
   })
   const sorted = [...all].sort((a, b) => a.name.localeCompare(b.name, 'es'))
-  const PAGE_SIZE = 60
   return {
-    exercises: sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    exercises: sorted.slice(page * CATALOG_PAGE_SIZE, page * CATALOG_PAGE_SIZE + CATALOG_PAGE_SIZE),
     total: sorted.length,
   }
 }
 
 export async function fetchExercisesByGroup(group: string, limit = 20): Promise<Exercise[]> {
+  if (!isLocalDemoMode()) {
+    const { data: muscles } = await supabase
+      .from('muscles')
+      .select('id')
+      .eq('group_name', group)
+    if (muscles?.length) {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('id, name, name_en, muscle_primary, muscle_secondary, equipment, category, image_url, level')
+        .in('muscle_primary', muscles.map((m) => m.id))
+        .limit(limit)
+      if (!error && data) {
+        return (data as Exercise[]).sort(
+          (a, b) =>
+            (b.muscle_secondary?.length ?? 0) - (a.muscle_secondary?.length ?? 0),
+        )
+      }
+    }
+  }
   const muscles = await fetchMuscles()
   const ids = new Set(muscles.filter((m) => m.group_name === group).map((m) => m.id))
   const rows = await store.loadAll<Exercise>('exercises')
@@ -205,6 +278,33 @@ export async function fetchExerciseDetail(id: string): Promise<{
   muscles: Muscle[]
   equipment: Equipment | null
 }> {
+  if (!isLocalDemoMode()) {
+    const { data: exercise, error } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (!error && exercise) {
+      const ids = [exercise.muscle_primary, ...(exercise.muscle_secondary ?? [])].filter(
+        (x): x is number => typeof x === 'number',
+      )
+      let muscles: Muscle[] = []
+      if (ids.length) {
+        const { data } = await supabase.from('muscles').select('*').in('id', ids)
+        muscles = (data ?? []) as Muscle[]
+      }
+      let equipment: Equipment | null = null
+      if (exercise.equipment) {
+        const { data } = await supabase
+          .from('equipment')
+          .select('*')
+          .eq('id', exercise.equipment)
+          .single()
+        equipment = (data ?? null) as Equipment | null
+      }
+      return { exercise: exercise as Exercise, muscles, equipment }
+    }
+  }
   const rows = await store.loadAll<Exercise>('exercises')
   const exercise = rows.find((e) => e.id === id) ?? (await embeddedExercises(new Date().toISOString()))[0]
   const muscles = await fetchMuscles()
