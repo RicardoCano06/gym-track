@@ -4,9 +4,10 @@ import { Link } from 'react-router-dom'
 import { useConfirm } from '@/lib/use-confirm'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { createRoutine, deleteRoutine, fetchRoutines } from '@/lib/db'
+import { createRoutine, deleteRoutine, fetchRoutines, updateRoutine } from '@/lib/db'
 import type { Routine } from '@/lib/types'
 import { useLang } from '@/lib/lang-context'
+import TrashIcon from '@/components/TrashIcon'
 
 export default function Routines() {
   const { user } = useAuth()
@@ -18,6 +19,22 @@ export default function Routines() {
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+
+  async function handleRename(id: string) {
+    const name = renameValue.trim()
+    setRenaming(null)
+    if (!name) return
+    try {
+      await updateRoutine(id, name)
+      setRoutines((prev) => prev.map((r) => (r.id === id ? { ...r, name } : r)))
+      pushToast('success', t('routines.renamed'))
+    } catch (err) {
+      console.error(err)
+      pushToast('error', t('routines.renameError'))
+    }
+  }
 
   useEffect(() => {
     if (!user) return
@@ -110,25 +127,51 @@ export default function Routines() {
               key={routine.id}
               className="group card-hairline glass-card relative rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/50"
             >
-              <Link to={`/rutinas/${routine.id}`} className="block">
-                <h2 className="font-semibold">{routine.name}</h2>
-                {routine.description && (
-                  <p className="mt-1 text-sm text-dim">{routine.description}</p>
-                )}
-                <p className="mt-3 text-xs text-dim2">
-                  {new Date(routine.created_at).toLocaleDateString(
-                    lang === 'en' ? 'en-US' : 'es-AR',
+              {renaming === routine.id ? (
+                <input
+                  autoFocus
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={() => handleRename(routine.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRename(routine.id)
+                    if (e.key === 'Escape') setRenaming(null)
+                  }}
+                  className="w-full rounded-lg border border-emerald-500/50 bg-bg px-3 py-2 font-semibold outline-none"
+                />
+              ) : (
+                <Link to={`/rutinas/${routine.id}`} className="block">
+                  <h2 className="font-semibold">{routine.name}</h2>
+                  {routine.description && (
+                    <p className="mt-1 text-sm text-dim">{routine.description}</p>
                   )}
-                </p>
-              </Link>
-              <button
-                onClick={() => handleDelete(routine.id, routine.name)}
-                disabled={deleting === routine.id}
-                className="absolute right-3 top-3 flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
-                title={t('routines.deleteHint')}
-              >
-                ✕
-              </button>
+                  <p className="mt-3 text-xs text-dim2">
+                    {new Date(routine.created_at).toLocaleDateString(
+                      lang === 'en' ? 'en-US' : 'es-AR',
+                    )}
+                  </p>
+                </Link>
+              )}
+              <div className="absolute right-3 top-3 flex items-center gap-0.5">
+                <button
+                  onClick={() => {
+                    setRenameValue(routine.name)
+                    setRenaming(routine.id)
+                  }}
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-sm text-dim2 transition-colors hover:bg-surface2 hover:text-soft"
+                  title={t('routines.rename')}
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={() => handleDelete(routine.id, routine.name)}
+                  disabled={deleting === routine.id}
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
+                  title={t('routines.deleteHint')}
+                >
+                  <TrashIcon />
+                </button>
+              </div>
             </div>
           ))}
         </div>

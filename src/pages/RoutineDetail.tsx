@@ -11,6 +11,7 @@ import {
   deleteDay,
   fetchRoutineDetail,
   updateDay,
+  updateRoutine,
   updateRoutineExercise,
 } from '@/lib/db'
 import type { Exercise, Routine, RoutineDay, RoutineExercise } from '@/lib/types'
@@ -27,6 +28,22 @@ export default function RoutineDetail() {
   const [newDayName, setNewDayName] = useState('')
   const [saving, setSaving] = useState(false)
   const [overlayDay, setOverlayDay] = useState<RoutineDay | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [routineName, setRoutineName] = useState('')
+
+  async function saveRoutineName() {
+    setEditingName(false)
+    const name = routineName.trim()
+    if (!routine || !name || name === routine.name) return
+    try {
+      await updateRoutine(routine.id, name)
+      await refresh()
+      pushToast('success', t('routines.renamed'))
+    } catch (err) {
+      console.error(err)
+      pushToast('error', t('routines.renameError'))
+    }
+  }
 
   const refresh = async () => {
     if (!id) return
@@ -192,7 +209,35 @@ export default function RoutineDetail() {
       >
         {t('rdetail.back')}
       </Link>
-      <h1 className="text-2xl font-bold tracking-tight">{routine.name}</h1>
+      <h1 className="text-2xl font-bold tracking-tight">
+        {editingName ? (
+          <input
+            autoFocus
+            value={routineName}
+            onChange={(e) => setRoutineName(e.target.value)}
+            onBlur={saveRoutineName}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveRoutineName()
+              if (e.key === 'Escape') setEditingName(false)
+            }}
+            className="w-full max-w-sm rounded-lg border border-emerald-500/50 bg-bg px-3 py-2 text-2xl font-bold outline-none"
+          />
+        ) : (
+          <span className="group inline-flex items-center gap-2">
+            {routine.name}
+            <button
+              onClick={() => {
+                setRoutineName(routine.name)
+                setEditingName(true)
+              }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm text-dim2 opacity-0 transition-opacity hover:bg-surface2 hover:text-soft group-hover:opacity-100"
+              title={t('routines.rename')}
+            >
+              ✎
+            </button>
+          </span>
+        )}
+      </h1>
       <p className="mt-1 text-sm text-dim">
         {t('rdetail.days', {
           n: days.length,

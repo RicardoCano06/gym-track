@@ -212,6 +212,12 @@ export async function createRoutine(userId: string, name: string): Promise<Routi
   return data as Routine
 }
 
+export async function updateRoutine(id: string, name: string) {
+  if (isDemoMode()) return demo.updateRoutine(id, name)
+  const { error } = await supabase.from('routines').update({ name }).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteRoutine(id: string) {
   if (isDemoMode()) return demo.deleteRoutine(id)
   // Las sesiones referencian routine_id/day_id sin ON DELETE SET NULL en el

@@ -22,6 +22,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
   const [category, setCategory] = useState('')
   const [results, setResults] = useState<Exercise[]>([])
   const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(0)
   const [searched, setSearched] = useState(false)
   const [fetching, setFetching] = useState(false)
   const [kinds, setKinds] = useState<string[]>([])
@@ -43,12 +44,14 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
     if (!query.trim() && !group && !kind && !category) {
       setResults([])
       setTotal(0)
+      setPage(0)
       setSearched(false)
       return
     }
     let cancelled = false
     const timer = setTimeout(() => {
       setFetching(true)
+      setPage(0)
       fetchExercises({ search: query.trim(), group, equipmentKind: kind, category }, 0)
         .then((res) => {
           if (cancelled) return
@@ -69,6 +72,19 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
       clearTimeout(timer)
     }
   }, [query, group, kind, category, pushToast, t])
+
+  // Paginación acumulativa: carga la página siguiente y la agrega a los ya
+  // mostrados, para que el contador y la lista coincidan con el total real.
+  async function loadMore() {
+    const next = page + 1
+    const res = await fetchExercises(
+      { search: query.trim(), group, equipmentKind: kind, category },
+      next,
+    )
+    setResults((prev) => [...prev, ...res.exercises])
+    setTotal(res.total)
+    setPage(next)
+  }
 
   const alreadyAdded = new Set([
     ...(day.exercises ?? []).map((re) => re.exercise_id),
@@ -185,8 +201,9 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-edge2 border-t-emerald-500" />
             </div>
           ) : shown.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {shown.slice(0, 40).map((ex) => (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+              {shown.map((ex) => (
                 <button
                   key={ex.id}
                   onClick={() => handleAdd(ex)}
@@ -217,6 +234,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
                 </button>
               ))}
             </div>
+            </>
           ) : searched ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-sm font-medium text-soft">{t('add.noResults')}</p>
@@ -241,6 +259,18 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
           )}
         </div>
       </div>
+
+      {searched && shown.length > 0 && shown.length < total && (
+        <div className="border-t border-edge p-3">
+          <button
+            onClick={loadMore}
+            disabled={fetching}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-edge bg-surface px-5 text-sm font-medium text-soft transition-colors hover:border-emerald-500/50 hover:text-strong disabled:opacity-50"
+          >
+            {t('add.loadMore', { n: shown.length, m: total })}
+          </button>
+        </div>
+      )}
     </div>,
     document.body,
   )

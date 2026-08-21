@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import SwipeRow from '@/components/SwipeRow'
+import TrashIcon from '@/components/TrashIcon'
 import { useConfirm } from '@/lib/use-confirm'
 import { useToast } from '@/lib/toast-context'
 import { displayName } from '@/lib/i18n'
@@ -101,20 +102,7 @@ export default function DayCard({
             title={t('day.deleteTitle')}
             aria-label={t('day.deleteTitle')}
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-            >
-              <path d="M3 6h18" />
-              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-              <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" />
-              <path d="M10 11v6M14 11v6" />
-            </svg>
+            <TrashIcon />
           </button>
         </div>
       </div>
@@ -264,7 +252,7 @@ function ExerciseRow({ item, canPair, onRemove, onUpdate, onToggleSuperset }: Ex
                 className="flex min-h-9 min-w-9 items-center justify-center rounded-lg text-sm text-dim2 transition-colors hover:bg-red-500/10 hover:text-red-400"
                 title={t('day.removeExercise')}
               >
-                ✕
+                <TrashIcon className="h-4 w-4" />
               </button>
             </div>
           </div>

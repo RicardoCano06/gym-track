@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import BottomSheet from '@/components/BottomSheet'
 import ErrorState from '@/components/ErrorState'
 import RestTimer from '@/components/RestTimer'
+import TrashIcon from '@/components/TrashIcon'
 import { RestTimerProvider } from '@/components/TimerContext'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useConfirm } from '@/lib/use-confirm'
@@ -781,7 +782,7 @@ function SetRow({ set, saved, saving, active, onUpdate, onCommit, onDelete, onNo
             className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-dim2 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 active:scale-90"
             title={t('train.deleteSetTitle')}
           >
-            ✕
+            <TrashIcon className="h-4 w-4" />
           </button>
         </div>
       </div>

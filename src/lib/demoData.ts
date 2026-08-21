@@ -371,6 +371,12 @@ export async function createRoutine(_userId: string, name: string): Promise<Rout
   return routine
 }
 
+export async function updateRoutine(id: string, name: string) {
+  const rows = await store.loadAll<Routine>('routines')
+  const routine = rows.find((r) => r.id === id)
+  if (routine) await store.put('routines', id, { ...routine, name })
+}
+
 export async function deleteRoutine(id: string) {
   const days = await store.loadAll<RoutineDay>('routine_days')
   const mine = days.filter((d) => d.routine_id === id)
