@@ -26,7 +26,8 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
   const [searched, setSearched] = useState(false)
   const [fetching, setFetching] = useState(false)
   const [kinds, setKinds] = useState<string[]>([])
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -73,6 +74,11 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
     }
   }, [query, group, kind, category, pushToast, t])
 
+  // Cambiar los filtros invalida la selección previa.
+  useEffect(() => {
+    setSelected(new Set())
+  }, [query, group, kind, category])
+
   // Paginación acumulativa: carga la página siguiente y la agrega a los ya
   // mostrados, para que el contador y la lista coincidan con el total real.
   async function loadMore() {
@@ -86,10 +92,7 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
     setPage(next)
   }
 
-  const alreadyAdded = new Set([
-    ...(day.exercises ?? []).map((re) => re.exercise_id),
-    ...addedIds,
-  ])
+  const alreadyAdded = new Set((day.exercises ?? []).map((re) => re.exercise_id))
   const shown = results.filter((ex) => !alreadyAdded.has(ex.id))
   const hasFilters = !!(query.trim() || group || kind || category)
 
@@ -97,10 +100,28 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
     setGroup(g)
   }
 
-  function handleAdd(ex: Exercise) {
-    onAdd(ex)
-    setAddedIds((prev) => new Set(prev).add(ex.id))
-    pushToast('success', t('add.added', { name: displayName(ex, lang) }))
+  function toggleSelect(ex: Exercise) {
+    if (alreadyAdded.has(ex.id)) return
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(ex.id)) next.delete(ex.id)
+      else next.add(ex.id)
+      return next
+    })
+  }
+
+  async function addSelected() {
+    const toAdd = results.filter((ex) => selected.has(ex.id) && !alreadyAdded.has(ex.id))
+    if (toAdd.length === 0) return
+    setAdding(true)
+    try {
+      for (const ex of toAdd) onAdd(ex)
+      const dayName = day.name ?? t('day.number', { n: day.day_number })
+      pushToast('success', t('add.confirmAdded', { n: toAdd.length, day: dayName }))
+      onClose()
+    } finally {
+      setAdding(false)
+    }
   }
 
   return createPortal(
@@ -113,6 +134,9 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
           ✕
         </button>
         <h2 className="flex-1 text-lg font-bold">{t('add.title')}</h2>
+        {selected.size > 0 && (
+          <span className="text-sm font-medium text-emerald-400">{selected.size} ✓</span>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -194,6 +218,11 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
             <p className="text-xs text-dim2">
               {searched ? t('add.results', { n: total, s: total === 1 ? '' : 's' }) : ''}
             </p>
+            {selected.size > 0 && (
+              <p className="text-xs font-medium text-emerald-400">
+                {t('add.selectedCount', { n: selected.size })}
+              </p>
+            )}
           </div>
 
           {fetching ? (
@@ -203,37 +232,61 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
           ) : shown.length > 0 ? (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {shown.map((ex) => (
-                <button
-                  key={ex.id}
-                  onClick={() => handleAdd(ex)}
-                  className="group flex flex-col overflow-hidden rounded-xl border border-edge bg-surface text-left transition-colors hover:border-emerald-500/50 hover:bg-surface2"
-                >
-                  {ex.image_url ? (
-                    <img
-                      src={ex.image_url}
-                      alt=""
-                      loading="lazy"
-                      className="aspect-square w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-square w-full items-center justify-center bg-surface2 text-2xl text-dim2">
-                      🏋️
-                    </div>
-                  )}
-                  <div className="px-3 py-2.5">
-                    <p className="truncate text-sm font-medium">
-                      {displayName(ex, lang)}
-                    </p>
-                    {ex.category && (
-                      <p className="mt-0.5 truncate text-xs text-dim2">
-                        {t(`cat.${ex.category}`)}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+                {shown.map((ex) => {
+                  const isSelected = selected.has(ex.id)
+                  return (
+                    <button
+                      key={ex.id}
+                      onClick={() => toggleSelect(ex)}
+                      className={`group relative flex flex-col overflow-hidden rounded-xl border bg-surface text-left transition-colors ${
+                        isSelected
+                          ? 'border-emerald-500 ring-2 ring-inset ring-emerald-500/30'
+                          : 'border-edge hover:border-emerald-500/50 hover:bg-surface2'
+                      }`}
+                    >
+                      {isSelected && (
+                        <span className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-neutral-950 shadow-[0_2px_10px_rgba(16,185,129,0.5)]">
+                          ✓
+                        </span>
+                      )}
+                      {ex.image_url ? (
+                        <img
+                          src={ex.image_url}
+                          alt=""
+                          loading="lazy"
+                          className="aspect-square w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex aspect-square w-full items-center justify-center bg-surface2 text-2xl text-dim2">
+                          🏋️
+                        </div>
+                      )}
+                      <div className="px-3 py-2.5">
+                        <p className="truncate text-sm font-medium">
+                          {displayName(ex, lang)}
+                        </p>
+                        {ex.category && (
+                          <p className="mt-0.5 truncate text-xs text-dim2">
+                            {t(`cat.${ex.category}`)}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {results.length < total && (
+                <div className="pt-4 text-center">
+                  <button
+                    onClick={loadMore}
+                    disabled={fetching}
+                    className="min-h-11 rounded-xl border border-edge bg-surface px-6 text-sm font-medium text-soft transition-colors hover:border-emerald-500/50 hover:text-strong disabled:opacity-50"
+                  >
+                    {t('add.loadMore', { n: shown.length, m: total })}
+                  </button>
+                </div>
+              )}
             </>
           ) : searched ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -260,14 +313,14 @@ export default function AddExerciseOverlay({ day, onClose, onAdd }: Props) {
         </div>
       </div>
 
-      {searched && shown.length > 0 && shown.length < total && (
-        <div className="border-t border-edge p-3">
+      {selected.size > 0 && (
+        <div className="pointer-events-none absolute bottom-6 right-6 z-20">
           <button
-            onClick={loadMore}
-            disabled={fetching}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-edge bg-surface px-5 text-sm font-medium text-soft transition-colors hover:border-emerald-500/50 hover:text-strong disabled:opacity-50"
+            onClick={addSelected}
+            disabled={adding}
+            className="pointer-events-auto flex min-h-12 items-center gap-2 rounded-full bg-emerald-500 px-6 text-sm font-semibold text-neutral-950 shadow-[0_8px_30px_rgba(16,185,129,0.45)] transition-all duration-200 hover:bg-emerald-400 active:scale-95 disabled:opacity-60"
           >
-            {t('add.loadMore', { n: shown.length, m: total })}
+            {t('add.addSelected', { n: selected.size })}
           </button>
         </div>
       )}
