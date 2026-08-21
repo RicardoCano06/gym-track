@@ -9,6 +9,7 @@ import { genId } from '@/lib/sync'
 import { DEMO_LOCAL_USER_ID, isLocalDemoMode } from '@/lib/demo'
 import { supabase } from '@/lib/supabase'
 import { buildDemoDataset, embeddedEquipment, embeddedExercises, embeddedMuscles } from '@/lib/demoSeed'
+import { normalizeSearch } from '@/lib/search'
 import * as store from '@/lib/demoStore'
 import { WEEKDAYS } from '@/lib/constants'
 import type {
@@ -231,7 +232,12 @@ export async function fetchExercises(filters: ExerciseFilters, page: number): Pr
       : [],
   )
   const all = rows.filter((ex) => {
-    if (filters.search && !`${ex.name} ${ex.name_en ?? ''}`.toLowerCase().includes(filters.search.toLowerCase())) return false
+    if (
+      filters.search &&
+      !normalizeSearch(ex.name).includes(normalizeSearch(filters.search)) &&
+      !normalizeSearch(ex.name_en ?? '').includes(normalizeSearch(filters.search))
+    )
+      return false
     if (filters.group && !muscleIds.has(ex.muscle_primary ?? -1)) return false
     if (filters.equipmentKind && !equipmentIds.has(ex.equipment ?? -1)) return false
     if (filters.category && ex.category !== filters.category) return false

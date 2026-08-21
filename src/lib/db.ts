@@ -1,5 +1,6 @@
 import { isDemoMode } from '@/lib/demo'
 import * as demo from '@/lib/demoData'
+import { normalizeSearch } from '@/lib/search'
 import type { PostgrestFilterBuilder } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { enqueue, genId } from '@/lib/sync'
@@ -42,6 +43,14 @@ export interface ExerciseFilters {
 
 export async function fetchExercises(filters: ExerciseFilters, page: number) {
   if (isDemoMode()) return demo.fetchExercises(filters, page)
+
+  // Búsqueda textual: se resuelve en el cliente con normalización de acentos y
+  // mayúsculas, sobre el subconjunto filtrado por grupo/equipo/categoría (que
+  // sí se aplica en el servidor). Así "jalon" encuentra "Jalón" y se busca
+  // también en el nombre en inglés.
+  const search = (filters.search ?? '').trim()
+  if (search) return searchExercises(filters, page, search)
+
   if (filters.group) {
     const { data: muscles } = await supabase
       .from('muscles')
@@ -56,7 +65,6 @@ export async function fetchExercises(filters: ExerciseFilters, page: number) {
         count: 'exact',
       })
       .in('muscle_primary', ids)
-    if (filters.search) q = q.ilike('name', `%${filters.search}%`)
     if (filters.category) q = q.eq('category', filters.category)
     if (filters.equipmentKind) {
       const { data: eqs } = await supabase
@@ -75,7 +83,6 @@ export async function fetchExercises(filters: ExerciseFilters, page: number) {
       count: 'exact',
     })
 
-  if (filters.search) q = q.ilike('name', `%${filters.search}%`)
   if (filters.category) q = q.eq('category', filters.category)
   if (filters.equipmentKind) {
     const { data: eqs } = await supabase
@@ -86,6 +93,58 @@ export async function fetchExercises(filters: ExerciseFilters, page: number) {
     q = q.in('equipment', eqs.map((e) => e.id))
   }
   return paginate(q, page)
+}
+
+// Búsqueda client-side con normalización de diacríticos. Trae el subconjunto
+// (filtros duros) sin paginar, filtra por texto en el cliente y pagina.
+async function searchExercises(
+  filters: ExerciseFilters,
+  page: number,
+  search: string,
+) {
+  const group = filters.group
+  const muscles = group ? await fetchMusclesByIdsForGroup(group) : []
+  const muscleIds = new Set(muscles.map((m) => m.id))
+  const equipmentIds = await equipmentIdsByKind(filters.equipmentKind)
+
+  let q = supabase
+    .from('exercises')
+    .select('id, name, name_en, muscle_primary, muscle_secondary, equipment, category, image_url, level')
+  if (group) q = q.in('muscle_primary', [...muscleIds])
+  if (filters.category) q = q.eq('category', filters.category)
+  if (filters.equipmentKind) q = q.in('equipment', [...equipmentIds])
+
+  const { data, error } = await q.order('name')
+  if (error) throw error
+
+  const term = normalizeSearch(search)
+  const allData = (data ?? []) as Exercise[]
+  const filtered = allData.filter((ex: Exercise) => {
+    if (group && !muscleIds.has(ex.muscle_primary ?? -1)) return false
+    if (filters.equipmentKind && !equipmentIds.has(ex.equipment ?? -1)) return false
+    if (filters.category && ex.category !== filters.category) return false
+    return (
+      normalizeSearch(ex.name).includes(term) ||
+      normalizeSearch(ex.name_en ?? '').includes(term)
+    )
+  })
+
+  const from = page * PAGE_SIZE
+  return {
+    exercises: filtered.slice(from, from + PAGE_SIZE),
+    total: filtered.length,
+  }
+}
+
+async function fetchMusclesByIdsForGroup(group: string): Promise<{ id: number }[]> {
+  const { data } = await supabase.from('muscles').select('id').eq('group_name', group)
+  return data ?? []
+}
+
+async function equipmentIdsByKind(kind: string | undefined): Promise<Set<number>> {
+  if (!kind) return new Set()
+  const { data } = await supabase.from('equipment').select('id').eq('kind', kind)
+  return new Set((data ?? []).map((e) => e.id))
 }
 
 type Query = PostgrestFilterBuilder<any, any, any, any, any, any>
