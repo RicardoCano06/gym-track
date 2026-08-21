@@ -3,16 +3,13 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const URL = 'https://rikbdlgdbxarddfusmwg.supabase.co'
-export const ANON =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpa2JkbGdkYnhhcmRkZnVzbXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNjkyNzQsImV4cCI6MjEwMjY0NTI3NH0.NckJ2_g7sf0arbJ0YV9kOcTlomR9YrU9LVxtFpSdTxE'
 export const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173'
 export const CDP_URL = process.env.CDP_URL ?? 'http://localhost:9222'
 export const TEST_EMAIL = 'gymtrack.test.2026@gmail.com'
 
-// La password del usuario de test NUNCA se hardcodea en el repo: se lee de
-// la variable de entorno E2E_TEST_PASSWORD o, en su defecto, del archivo
-// local .env.local (no versionado). Sin valor, las suites fallan a propósito.
+// Las credenciales de Supabase y el usuario de test NUNCA se hardcodean en el
+// repo: se leen de variables de entorno o del archivo local .env.local (no
+// versionado). Sin valores, las suites fallan a propósito.
 function readLocalEnv(key) {
   try {
     const here = dirname(fileURLToPath(import.meta.url))
@@ -23,10 +20,24 @@ function readLocalEnv(key) {
     return null
   }
 }
-export const TEST_PASS = process.env.E2E_TEST_PASSWORD ?? readLocalEnv('E2E_TEST_PASSWORD')
-if (!TEST_PASS) {
+
+function envOrLocal(keys) {
+  for (const k of keys) {
+    if (process.env[k]) return process.env[k]
+  }
+  for (const k of keys) {
+    const v = readLocalEnv(k)
+    if (v) return v
+  }
+  return null
+}
+
+export const URL = envOrLocal(['SUPABASE_URL', 'VITE_SUPABASE_URL'])
+export const ANON = envOrLocal(['SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY'])
+export const TEST_PASS = envOrLocal(['E2E_TEST_PASSWORD'])
+if (!URL || !ANON || !TEST_PASS) {
   throw new Error(
-    'Falta E2E_TEST_PASSWORD: definila en el entorno o en .env.local (ver .env.example)',
+    'Faltan credenciales E2E (SUPABASE_URL / SUPABASE_ANON_KEY / E2E_TEST_PASSWORD): definilas en el entorno o en .env.local (ver .env.example)',
   )
 }
 
