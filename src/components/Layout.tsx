@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import SyncStatus from '@/components/SyncStatus'
 import HeaderStatus from '@/components/HeaderStatus'
 import ThemeToggle from '@/components/ThemeToggle'
+import LanguageToggle from '@/components/LanguageToggle'
 import ScrollToTop from '@/components/ScrollToTop'
 import { useTheme } from '@/lib/theme-context'
 import { useLang } from '@/lib/lang-context'
@@ -194,9 +195,6 @@ export default function Layout() {
         <div className="flex items-center gap-2 px-2 pb-6 text-lg font-bold tracking-tight">
           <img src={logo} alt="" aria-hidden className="h-[21px] w-auto" />
           <img src={letras} alt="Vekt" className="h-[30px] w-auto" />
-          <span className="ml-auto">
-            <ThemeToggle />
-          </span>
         </div>
         <div className="flex flex-col gap-1">
           {links.map((link) => (
@@ -223,7 +221,11 @@ export default function Layout() {
             </NavLink>
           ))}
         </div>
-        <div className="mt-auto flex flex-col gap-1 pt-8">
+        <div className="mt-auto flex flex-col gap-3 pt-8">
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ThemeToggle />
+          </div>
           <button
             type="button"
             onClick={() =>

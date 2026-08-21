@@ -182,7 +182,7 @@ export default function Profile() {
           <h1 className="text-2xl font-bold tracking-tight">{t('profile.title')}</h1>
           <p className="mt-1 text-sm text-dim">{t('profile.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 md:hidden">
           <LanguageToggle />
           <ThemeToggle />
         </div>
@@ -409,7 +409,7 @@ export default function Profile() {
               },
             })
           }
-          className="min-h-12 w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20 active:scale-[0.99] md:max-w-xs"
+          className="min-h-12 w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20 active:scale-[0.99] md:hidden"
         >
           {t('profile.logout')}
         </button>
