@@ -192,9 +192,7 @@ export async function fetchExercises(filters: ExerciseFilters, page: number): Pr
     const filter = { ...filters }
     let q = supabase
       .from('exercises')
-      .select('id, name, name_en, muscle_primary, muscle_secondary, equipment, category, image_url, level', {
-        count: 'exact',
-      })
+      .select('id, name, name_en, muscle_primary, muscle_secondary, equipment, category, image_url, level')
     if (filter.group) {
       const { data: muscles } = await supabase
         .from('muscles')
@@ -203,7 +201,6 @@ export async function fetchExercises(filters: ExerciseFilters, page: number): Pr
       if (!muscles?.length) return { exercises: [], total: 0 }
       q = q.in('muscle_primary', muscles.map((m) => m.id))
     }
-    if (filter.search) q = q.ilike('name', `%${filter.search}%`)
     if (filter.category) q = q.eq('category', filter.category)
     if (filter.equipmentKind) {
       const { data: eqs } = await supabase
@@ -213,8 +210,30 @@ export async function fetchExercises(filters: ExerciseFilters, page: number): Pr
       if (!eqs?.length) return { exercises: [], total: 0 }
       q = q.in('equipment', eqs.map((e) => e.id))
     }
-    const from = page * CATALOG_PAGE_SIZE
-    const { data, count, error } = await q.order('name').range(from, from + CATALOG_PAGE_SIZE - 1)
+
+    // Búsqueda: igual que el catálogo real — traer el subconjunto y filtrar en
+    // el cliente normalizando acentos/mayúsculas (name y name_en).
+    const search = (filter.search ?? '').trim()
+    if (search) {
+      const { data, error } = await q.order('name')
+      if (error) throw error
+      const term = normalizeSearch(search)
+      const rows = (data ?? []) as Exercise[]
+      const filtered = rows.filter((ex: Exercise) =>
+        normalizeSearch(ex.name).includes(term) ||
+        normalizeSearch(ex.name_en ?? '').includes(term),
+      )
+      const from = page * CATALOG_PAGE_SIZE
+      return {
+        exercises: filtered.slice(from, from + CATALOG_PAGE_SIZE),
+        total: filtered.length,
+      }
+    }
+
+    const { data, count, error } = await q.order('name').range(
+      page * CATALOG_PAGE_SIZE,
+      page * CATALOG_PAGE_SIZE + CATALOG_PAGE_SIZE - 1,
+    )
     if (!error && data) {
       return { exercises: data as Exercise[], total: count ?? 0 }
     }
